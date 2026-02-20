@@ -559,10 +559,10 @@ function indexHtml(): string {
     function titleCase(value) {
       const raw = String(value || '').trim();
       if (!raw) return '';
-      return raw.replace(/[_-]+/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
+      return raw.replace(/[_-]+/g, ' ').replace(/\\b\\w/g, (m) => m.toUpperCase());
     }
     function shortText(value, limit = 180) {
-      const raw = String(value || '').replace(/\s+/g, ' ').trim();
+      const raw = String(value || '').replace(/\\s+/g, ' ').trim();
       if (!raw) return '';
       if (raw.length <= limit) return raw;
       return raw.slice(0, limit - 1) + '…';
