@@ -309,6 +309,9 @@ function indexHtml(): string {
       padding: 1px 8px;
       font-size: 11px;
     }
+    .type.handoff { border-color: #2f7f66; background: rgba(45,212,137,.14); color: #93f0c2; }
+    .type.error { border-color: #7c3242; background: rgba(255,107,122,.16); color: #ffbac1; }
+    .type.done { border-color: #2f6d7f; background: rgba(121,240,255,.13); color: #bdf7ff; }
     .flow { color: #b7c8e6; font-size: 12px; }
     .detail { font-size: 12px; color: var(--muted); line-height: 1.35; }
     .tiny { font-size: 11px; color: var(--muted); }
@@ -375,7 +378,7 @@ function indexHtml(): string {
       <div class="nav">
         <div class="nav-item"><strong>Overview</strong>Queue depth, health, agent/team count</div>
         <div class="nav-item"><strong>Trace Feed</strong>Realtime message routing and handoffs</div>
-        <div class="nav-item"><strong>Inspector</strong>Click any event for raw JSON details</div>
+        <div class="nav-item"><strong>Inspector</strong>Raw JSON lives here only, for debugging</div>
         <div class="nav-item"><strong>Conversations</strong>Recent saved team chat artifacts</div>
       </div>
     </aside>
@@ -469,8 +472,51 @@ function indexHtml(): string {
       if (ev.agentId) return '@' + ev.agentId;
       return '-';
     }
-    function detailOf(ev) {
-      return ev.message || ev.responseText || ev.teamName || ev.channel || '';
+    function titleCase(value) {
+      const raw = String(value || '').trim();
+      if (!raw) return '';
+      return raw.replace(/[_-]+/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
+    }
+    function shortText(value, limit = 180) {
+      const raw = String(value || '').replace(/\s+/g, ' ').trim();
+      if (!raw) return '';
+      if (raw.length <= limit) return raw;
+      return raw.slice(0, limit - 1) + '…';
+    }
+    function eventTypeClass(ev) {
+      if (ev.type === 'chain_handoff') return 'handoff';
+      if (ev.type === 'response_ready' || ev.type === 'team_chain_end') return 'done';
+      if (String(ev.type || '').includes('error')) return 'error';
+      return '';
+    }
+    function humanSummary(ev) {
+      switch (ev.type) {
+        case 'processor_start':
+          return 'Queue processor started and loaded current agents and teams.';
+        case 'message_received':
+          return 'Incoming message received from ' + (ev.sender || 'unknown sender') + ' on ' + titleCase(ev.channel || 'unknown channel') + '.';
+        case 'agent_routed':
+          return 'Routed to @' + (ev.agentId || '?') + ' using ' + titleCase(ev.provider || 'provider') + ' (' + (ev.model || 'default model') + ').';
+        case 'team_chain_start':
+          return 'Team conversation started for ' + (ev.teamName || ev.teamId || 'team') + '.';
+        case 'chain_step_start':
+          return '@' + (ev.agentId || '?') + ' started working on this step.';
+        case 'chain_handoff':
+          return '@' + (ev.fromAgent || '?') + ' delegated to @' + (ev.toAgent || '?') + '.';
+        case 'chain_step_done':
+          return '@' + (ev.agentId || '?') + ' completed a step (' + (ev.responseLength || 0) + ' chars response).';
+        case 'response_ready':
+          return 'Final response prepared for ' + titleCase(ev.channel || 'channel') + ' sender ' + (ev.sender || 'unknown') + '.';
+        case 'team_chain_end':
+          return 'Team conversation completed with ' + (ev.totalSteps || 0) + ' total steps.';
+        default:
+          return shortText(ev.message || ev.responseText || ev.teamName || ev.channel || 'Event captured.');
+      }
+    }
+    function eventSubtitle(ev) {
+      const flow = flowOf(ev);
+      const extra = ev.teamId ? ' · team ' + ev.teamId : '';
+      return flow === '-' ? 'system' + extra : flow + extra;
     }
     function renderEvents() {
       const typeFilter = typeFilterEl.value;
@@ -484,10 +530,12 @@ function indexHtml(): string {
       const rows = filtered.map((ev, idx) => {
         const syntheticId = String(ev.timestamp || 0) + ':' + String(idx);
         const cls = syntheticId === selectedEventId ? 'event selected' : 'event';
+        const typeLabel = titleCase(ev.type || 'event');
+        const typeClass = eventTypeClass(ev);
         return '<div class="' + cls + '" data-eid="' + syntheticId + '">'
-          + '<div class="event-top"><span class="type">' + (ev.type || '-') + '</span><span class="tiny mono">' + fmtTime(ev.timestamp) + '</span></div>'
-          + '<div class="flow mono">' + flowOf(ev) + '</div>'
-          + '<div class="detail">' + String(detailOf(ev)).slice(0, 220) + '</div>'
+          + '<div class="event-top"><span class="type ' + typeClass + '">' + typeLabel + '</span><span class="tiny mono">' + fmtTime(ev.timestamp) + '</span></div>'
+          + '<div class="flow mono">' + eventSubtitle(ev) + '</div>'
+          + '<div class="detail">' + shortText(humanSummary(ev), 240) + '</div>'
           + '</div>';
       }).join('');
       eventsList.innerHTML = rows || '<div class="tiny muted">No events yet</div>';
@@ -508,12 +556,16 @@ function indexHtml(): string {
       });
     }
     function renderQueue(data) {
+      const channelLabel = (value) => titleCase(value || 'unknown');
       const renderItems = (items) => {
         if (!items || items.length === 0) return '<div class="tiny muted">empty</div>';
         return items.map((item) => {
+          const msgId = item.messageId ? String(item.messageId) : 'n/a';
+          const preview = shortText(item.preview || 'No message preview available', 140);
           return '<div class="q-item">'
-            + '<div><span class="label">' + (item.channel || 'n/a') + '</span><span class="mono tiny">' + (item.file || '-') + '</span></div>'
-            + '<div class="tiny muted">' + (item.preview || '') + '</div>'
+            + '<div><span class="label">' + channelLabel(item.channel) + '</span><span class="tiny">' + (item.sender || 'unknown sender') + '</span></div>'
+            + '<div class="tiny muted">' + preview + '</div>'
+            + '<div class="mono tiny muted">id: ' + msgId + '</div>'
             + '</div>';
         }).join('');
       };
@@ -526,9 +578,11 @@ function indexHtml(): string {
         return;
       }
       convListEl.innerHTML = rows.map((row) => {
+        const when = fmtTime(row.timestamp);
         return '<div class="conv-item">'
-          + '<div><span class="label">' + (row.teamId || 'team') + '</span><span class="mono tiny">' + (row.file || '') + '</span></div>'
-          + '<div class="tiny muted mono">' + (row.path || '') + '</div>'
+          + '<div><span class="label">Team ' + (row.teamId || 'unknown') + '</span><span class="tiny muted">' + when + '</span></div>'
+          + '<div class="tiny">Transcript: <span class="mono">' + (row.file || '') + '</span></div>'
+          + '<div class="tiny muted">Saved conversation artifact ready for review.</div>'
           + '</div>';
       }).join('');
     }
