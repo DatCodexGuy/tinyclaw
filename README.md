@@ -197,6 +197,18 @@ Pairing behavior:
 | -------- | --------------------------------- | ----------------- |
 | `update` | Update TinyClaw to latest version | `tinyclaw update` |
 
+**One-liner to (re)install local `update.sh` helper:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DatCodexGuy/tinyclaw/feat/team-autonomy-routing/scripts/install-update-helper.sh | bash -s -- /root/tinyclaw
+```
+
+Then run updates with:
+
+```bash
+cd /root/tinyclaw && ./update.sh
+```
+
 > **Note:** If you are on v0.0.1 or v0.0.2, the update script was broken. Please re-install instead:
 >
 > ```bash
