@@ -149,77 +149,71 @@ function indexHtml(): string {
   <title>TinyClaw Mission Control</title>
   <style>
     :root {
-      --bg-0: #060a14;
-      --bg-1: #0e1627;
-      --bg-2: #121d31;
-      --panel: #101a2d;
-      --panel-2: #0f1727;
-      --line: #24324a;
-      --text: #e8eef8;
-      --muted: #96a9c7;
-      --ok: #2dd489;
-      --warn: #ffbd4a;
-      --bad: #ff6b7a;
-      --accent: #6aa8ff;
-      --accent-2: #79f0ff;
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --line: #e4e9f1;
+      --line-2: #d9e0ec;
+      --text: #1f2a3d;
+      --muted: #6e7c95;
+      --soft: #f3f6fc;
+      --brand: #2f6df6;
+      --brand-soft: #e9f0ff;
+      --ok: #1fb96d;
+      --warn: #d7a019;
+      --bad: #d44757;
     }
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; min-width: 0; }
     body {
       margin: 0;
       color: var(--text);
-      font-family: "Segoe UI", "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
-      background:
-        radial-gradient(1000px 600px at -10% -20%, #1d355f 0%, transparent 50%),
-        radial-gradient(900px 500px at 120% -10%, #223e63 0%, transparent 45%),
-        linear-gradient(160deg, var(--bg-0), var(--bg-1) 42%, #0a1220);
+      font-family: "Inter", "Segoe UI", ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: var(--bg);
     }
     .app {
       display: grid;
-      grid-template-columns: 260px 1fr;
+      grid-template-columns: 220px 1fr;
       min-height: 100vh;
-      gap: 0;
+      background: var(--bg);
     }
     .sidebar {
       position: sticky;
       top: 0;
       height: 100vh;
-      padding: 22px 16px;
+      padding: 18px 14px;
       border-right: 1px solid var(--line);
-      background: linear-gradient(180deg, rgba(12,20,35,.92), rgba(8,13,24,.9));
-      backdrop-filter: blur(8px);
+      background: #fff;
     }
-    .logo { font-weight: 700; font-size: 19px; letter-spacing: .2px; }
+    .logo { font-weight: 700; font-size: 22px; letter-spacing: .2px; color: #172235; }
     .sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
     .nav { margin-top: 18px; display: grid; gap: 8px; }
     .nav-item {
       border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 10px 12px;
-      background: rgba(11,18,33,.7);
-      color: var(--text);
-      font-size: 13px;
+      border-radius: 8px;
+      padding: 10px;
+      background: #fff;
+      font-size: 12px;
     }
-    .nav-item strong { color: #fff; display: block; margin-bottom: 3px; font-size: 12px; }
+    .nav-item strong { display: block; margin-bottom: 3px; font-size: 12px; color: #1f2c42; }
     .badge {
-      margin-top: 14px;
+      margin-top: 12px;
       display: inline-flex;
       align-items: center;
       gap: 8px;
       padding: 6px 10px;
       border-radius: 999px;
-      border: 1px solid var(--line);
-      font-size: 12px;
+      border: 1px solid var(--line-2);
+      font-size: 11px;
       font-weight: 600;
+      background: #fff;
     }
     .dot { width: 8px; height: 8px; border-radius: 50%; }
-    .ok .dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
-    .bad .dot { background: var(--bad); box-shadow: 0 0 8px var(--bad); }
+    .ok .dot { background: var(--ok); }
+    .bad .dot { background: var(--bad); }
     .main {
-      padding: 16px;
+      padding: 16px 18px;
       display: grid;
       grid-template-rows: auto auto 1fr;
-      gap: 12px;
-      min-width: 0;
+      gap: 14px;
     }
     .topbar {
       position: sticky;
@@ -229,53 +223,138 @@ function indexHtml(): string {
       align-items: center;
       justify-content: space-between;
       gap: 10px;
-      padding: 12px 14px;
+      padding: 10px 14px;
       border: 1px solid var(--line);
-      border-radius: 14px;
-      background: rgba(11,18,31,.86);
-      backdrop-filter: blur(8px);
+      border-radius: 10px;
+      background: #fff;
     }
-    .heading { font-size: 15px; font-weight: 650; }
+    .heading { font-size: 18px; font-weight: 650; }
     .muted { color: var(--muted); }
     .mono {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 12px;
+      font-size: 11px;
       word-break: break-word;
     }
     .chips { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     .chip {
-      border: 1px solid var(--line);
+      border: 1px solid var(--line-2);
       border-radius: 999px;
-      background: var(--panel-2);
+      background: var(--soft);
       padding: 5px 10px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .search {
+      border: 1px solid var(--line-2);
+      background: var(--soft);
+      border-radius: 8px;
+      padding: 7px 10px;
+      min-width: 260px;
       font-size: 12px;
       color: var(--muted);
     }
+    .live-pill {
+      border: 1px solid #bfe8d1;
+      color: #1e9f5d;
+      background: #effcf4;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 5px 10px;
+    }
     .cards {
       display: grid;
-      grid-template-columns: repeat(6, minmax(110px, 1fr));
-      gap: 10px;
+      grid-template-columns: repeat(6, minmax(100px, 1fr));
+      gap: 12px;
     }
     .card {
       border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 10px;
-      background: linear-gradient(180deg, rgba(16,26,45,.96), rgba(12,20,34,.96));
-      min-height: 72px;
+      border-radius: 10px;
+      padding: 12px;
+      background: var(--panel);
+      min-height: 70px;
     }
-    .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; }
-    .v { font-size: 23px; font-weight: 720; margin-top: 4px; }
+    .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .v { font-size: 22px; font-weight: 700; margin-top: 6px; color: #1d2b42; }
+    .board-wrap {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      overflow: hidden;
+    }
+    .board-h {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .board-title { font-size: 16px; font-weight: 650; }
+    .board-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .board-btn {
+      border: 1px solid #c9d7f4;
+      background: var(--brand);
+      color: #fff;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 10px;
+    }
+    .board-cols {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      padding: 12px;
+      background: #fafbfd;
+    }
+    .col-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      color: #24344f;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .count-pill {
+      border: 1px solid var(--line-2);
+      border-radius: 999px;
+      padding: 1px 7px;
+      font-size: 11px;
+      color: var(--muted);
+      background: #fff;
+    }
+    .lane-card {
+      border: 1px solid var(--line-2);
+      border-radius: 8px;
+      background: #fff;
+      padding: 9px;
+      font-size: 12px;
+      color: #30435f;
+      margin-bottom: 8px;
+    }
+    .lane-card:last-child { margin-bottom: 0; }
+    .lane-muted { color: var(--muted); font-size: 11px; margin-top: 4px; }
+    .list {
+      margin: 0;
+      padding-left: 16px;
+      color: #334766;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .list li { margin: 6px 0; }
     .layout {
       display: grid;
-      grid-template-columns: 1.15fr 1fr;
-      gap: 12px;
+      grid-template-columns: 1.1fr 1fr 1fr;
+      gap: 14px;
       min-height: 0;
     }
-    .col { display: grid; gap: 12px; min-height: 0; }
+    .col { display: grid; gap: 14px; min-height: 0; align-content: start; }
     .panel {
       border: 1px solid var(--line);
-      border-radius: 12px;
-      background: rgba(15,23,39,.92);
+      border-radius: 10px;
+      background: var(--panel);
       min-height: 0;
       overflow: hidden;
     }
@@ -286,103 +365,81 @@ function indexHtml(): string {
       gap: 8px;
       padding: 10px 12px;
       border-bottom: 1px solid var(--line);
-      background: rgba(15,26,42,.95);
+      background: #fff;
     }
-    .panel-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; }
-    .panel-body { max-height: 33vh; overflow: auto; padding: 8px; }
+    .panel-title { font-size: 13px; font-weight: 700; color: #22344f; }
+    .panel-body { max-height: 40vh; overflow: auto; padding: 10px; background: #fff; }
     .event {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 8px;
+      border: 1px solid var(--line-2);
+      border-radius: 8px;
+      padding: 9px;
       margin-bottom: 8px;
-      background: rgba(11,18,30,.75);
+      background: #fcfdff;
       cursor: pointer;
     }
-    .event:hover { border-color: #3a5478; }
-    .event.selected { border-color: var(--accent); box-shadow: inset 0 0 0 1px rgba(106,168,255,.4); }
+    .event:hover { border-color: #b8c6dd; }
+    .event.selected { border-color: var(--brand); box-shadow: inset 0 0 0 1px #d5e2ff; }
     .event-top { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
     .type {
-      border: 1px solid #324a70;
-      background: rgba(47,88,141,.2);
-      color: #b9d7ff;
+      border: 1px solid #cad6ef;
+      background: #eff4ff;
+      color: #3d5b8f;
       border-radius: 999px;
       padding: 1px 8px;
       font-size: 11px;
     }
-    .type.handoff { border-color: #2f7f66; background: rgba(45,212,137,.14); color: #93f0c2; }
-    .type.error { border-color: #7c3242; background: rgba(255,107,122,.16); color: #ffbac1; }
-    .type.done { border-color: #2f6d7f; background: rgba(121,240,255,.13); color: #bdf7ff; }
-    .flow { color: #b7c8e6; font-size: 12px; }
+    .type.handoff { border-color: #bae6cf; background: #eefbf4; color: #23854e; }
+    .type.error { border-color: #f1c3ca; background: #fff1f3; color: #b84b59; }
+    .type.done { border-color: #c7def4; background: #f0f7ff; color: #2f6aa2; }
+    .flow { color: #4d5f7f; font-size: 12px; }
     .detail { font-size: 12px; color: var(--muted); line-height: 1.35; }
     .tiny { font-size: 11px; color: var(--muted); }
     .q-item, .conv-item {
-      border-bottom: 1px solid rgba(36,50,74,.7);
-      padding: 7px 2px;
+      border-bottom: 1px solid var(--line);
+      padding: 8px 2px;
     }
     .q-item:last-child, .conv-item:last-child { border-bottom: 0; }
     .label {
       display: inline-block;
-      border: 1px solid var(--line);
+      border: 1px solid #d6e1f3;
       border-radius: 6px;
       padding: 1px 6px;
       font-size: 11px;
       margin-right: 6px;
-      color: #bed1f2;
-      background: rgba(31,46,72,.4);
+      color: #2f5ea8;
+      background: #edf3ff;
     }
     pre {
       margin: 0;
       white-space: pre-wrap;
       overflow-wrap: anywhere;
-      color: #cee1ff;
+      color: #2f4568;
       font-size: 12px;
       line-height: 1.35;
-      background: rgba(8,13,23,.9);
+      background: #f7f9fd;
       border: 1px solid var(--line);
-      border-radius: 10px;
+      border-radius: 8px;
       padding: 10px;
     }
     input, select {
-      background: #091324;
-      color: var(--text);
-      border: 1px solid var(--line);
+      background: #f7f9fd;
+      color: #2f4568;
+      border: 1px solid var(--line-2);
       border-radius: 8px;
       padding: 6px 8px;
       font-size: 12px;
       outline: none;
     }
     .filters { display: flex; gap: 8px; align-items: center; }
-    .grid-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .board {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(140px, 1fr));
-      gap: 10px;
-    }
-    .lane {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      background: rgba(8, 14, 24, .82);
-      min-height: 120px;
-      overflow: hidden;
-    }
-    .lane-h {
-      padding: 8px 10px;
-      border-bottom: 1px solid var(--line);
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: .7px;
-      color: #c7d8f5;
-      background: rgba(20, 33, 53, .7);
-    }
-    .lane-b {
-      padding: 8px;
-      max-height: 210px;
-      overflow: auto;
-    }
+    .grid-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .board { display: grid; grid-template-columns: repeat(3, minmax(120px, 1fr)); gap: 10px; }
+    .lane { border: 1px solid var(--line); border-radius: 8px; background: #fafbfd; min-height: 120px; overflow: hidden; }
+    .lane-h { padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: #52617e; background: #fff; font-weight: 700; }
+    .lane-b { padding: 8px; max-height: 210px; overflow: auto; }
     .agent {
-      border: 1px solid #2a3a58;
+      border: 1px solid var(--line-2);
       border-radius: 8px;
-      background: rgba(14, 22, 36, .8);
+      background: #fff;
       padding: 7px;
       margin-bottom: 7px;
     }
@@ -394,28 +451,28 @@ function indexHtml(): string {
       gap: 8px;
       margin-bottom: 4px;
     }
-    .agent-name { font-size: 12px; color: #d9e6ff; font-weight: 600; }
+    .agent-name { font-size: 12px; color: #1c2b43; font-weight: 600; }
     .state {
       font-size: 10px;
       border-radius: 999px;
       padding: 1px 7px;
-      border: 1px solid #315c4a;
-      color: #a8f5d0;
-      background: rgba(45, 212, 137, .12);
+      border: 1px solid #bbe9cf;
+      color: #159053;
+      background: #eefbf4;
     }
     .state.waiting {
-      border-color: #66532b;
-      color: #ffd99a;
-      background: rgba(255, 189, 74, .14);
+      border-color: #f0ddb0;
+      color: #a87b15;
+      background: #fff8e8;
     }
     .state.idle {
-      border-color: #35537a;
-      color: #bad6ff;
-      background: rgba(106, 168, 255, .14);
+      border-color: #c6d9f5;
+      color: #3b6aa7;
+      background: #eef4ff;
     }
     .agent-meta { font-size: 11px; color: var(--muted); line-height: 1.3; }
     @media (max-width: 1200px) {
-      .cards { grid-template-columns: repeat(3, minmax(110px, 1fr)); }
+      .cards { grid-template-columns: repeat(3, minmax(100px, 1fr)); }
       .layout { grid-template-columns: 1fr; }
       .board { grid-template-columns: 1fr; }
     }
@@ -427,30 +484,34 @@ function indexHtml(): string {
         border-right: 0;
         border-bottom: 1px solid var(--line);
       }
-      .cards { grid-template-columns: repeat(2, minmax(110px, 1fr)); }
+      .cards { grid-template-columns: repeat(2, minmax(100px, 1fr)); }
+      .topbar { flex-direction: column; align-items: stretch; }
+      .search { min-width: 0; width: 100%; }
     }
   </style>
 </head>
 <body>
   <div class="app">
     <aside class="sidebar">
-      <div class="logo">TinyClaw Mission</div>
-      <div class="sub">Live orchestration control view</div>
+      <div class="logo">TinyClaw</div>
+      <div class="sub">Multi-Agent Orchestration</div>
       <div id="processorBadge" class="badge bad"><span class="dot"></span><span>Processor Offline</span></div>
       <div class="nav">
-        <div class="nav-item"><strong>Overview</strong>Queue depth, health, agent/team count</div>
-        <div class="nav-item"><strong>Trace Feed</strong>Realtime message routing and handoffs</div>
-        <div class="nav-item"><strong>Inspector</strong>Raw JSON lives here only, for debugging</div>
-        <div class="nav-item"><strong>Conversations</strong>Recent saved team chat artifacts</div>
+        <div class="nav-item"><strong>Dashboard</strong>Live system and task orchestration overview</div>
+        <div class="nav-item"><strong>Task Board</strong>Inbox / in-progress / completed flow</div>
+        <div class="nav-item"><strong>Agents</strong>Team workload and handoff states</div>
+        <div class="nav-item"><strong>Trace Feed</strong>Human-readable event activity stream</div>
       </div>
     </aside>
     <main class="main">
       <section class="topbar">
         <div>
-          <div class="heading">Mission Control Dashboard</div>
-          <div class="tiny">SSE live stream enabled</div>
+          <div class="heading">Multi-Agent Dashboard</div>
+          <div class="tiny">Monitor and orchestrate your TinyClaw team</div>
         </div>
         <div class="chips">
+          <span class="live-pill">Live</span>
+          <input class="search" value="Search tasks, agents, messages..." readonly />
           <span class="chip">Home: <span id="homePath" class="mono"></span></span>
           <span class="chip">Updated: <span id="lastUpdate" class="mono">-</span></span>
         </div>
@@ -464,11 +525,38 @@ function indexHtml(): string {
         <div class="card"><div class="k">Total Events</div><div id="eventCount" class="v">0</div></div>
       </section>
 
+      <section class="board-wrap">
+        <div class="board-h">
+          <div>
+            <div class="board-title">Task Board</div>
+            <div class="board-sub">Track and manage agent tasks</div>
+          </div>
+          <button class="board-btn" type="button">New Task</button>
+        </div>
+        <div class="board-cols">
+          <div>
+            <div class="col-head">Inbox <span class="count-pill" id="inboxCount">0</span></div>
+            <div class="lane-card">Incoming queue contains new work waiting to be picked up.</div>
+            <div class="lane-muted">Messages move here first before processing starts.</div>
+          </div>
+          <div>
+            <div class="col-head">In Progress <span class="count-pill" id="progressCount">0</span></div>
+            <div class="lane-card">Active tasks currently being handled by one or more agents.</div>
+            <div class="lane-muted">This reflects processing queue activity and live handoffs.</div>
+          </div>
+          <div>
+            <div class="col-head">Done <span class="count-pill" id="doneCount">0</span></div>
+            <div class="lane-card">Completed responses delivered successfully.</div>
+            <div class="lane-muted">Output queue and response-ready events roll up here.</div>
+          </div>
+        </div>
+      </section>
+
       <section class="layout">
         <div class="col">
           <div class="panel">
             <div class="panel-h">
-              <div class="panel-title">Realtime Trace Feed</div>
+              <div class="panel-title">Agent Performance</div>
               <div class="filters">
                 <select id="typeFilter">
                   <option value="all">all events</option>
@@ -480,20 +568,6 @@ function indexHtml(): string {
                 <input id="searchBox" placeholder="search flow/details" />
               </div>
             </div>
-            <div id="eventsList" class="panel-body"></div>
-          </div>
-          <div class="panel">
-            <div class="panel-h"><div class="panel-title">Queue Snapshot</div><div class="tiny">Newest first</div></div>
-            <div class="panel-body grid-two">
-              <div><div class="tiny" style="margin-bottom:6px">Incoming</div><div id="qIncoming"></div></div>
-              <div><div class="tiny" style="margin-bottom:6px">Processing</div><div id="qProcessing"></div></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col">
-          <div class="panel">
-            <div class="panel-h"><div class="panel-title">Team Lanes</div><div class="tiny">Live per-agent workload</div></div>
             <div class="panel-body">
               <div class="board">
                 <div class="lane">
@@ -512,12 +586,39 @@ function indexHtml(): string {
             </div>
           </div>
           <div class="panel">
-            <div class="panel-h"><div class="panel-title">Event Inspector</div><div class="tiny">Selected event JSON</div></div>
-            <div class="panel-body"><pre id="eventInspector">{}</pre></div>
+            <div class="panel-h"><div class="panel-title">Realtime Trace Feed</div><div class="tiny">Human-readable activity</div></div>
+            <div id="eventsList" class="panel-body"></div>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="panel">
+            <div class="panel-h"><div class="panel-title">Consensus & Queue</div><div class="tiny">Current collaboration signals</div></div>
+            <div class="panel-body grid-two">
+              <div><div class="tiny" style="margin-bottom:6px">Incoming</div><div id="qIncoming"></div></div>
+              <div><div class="tiny" style="margin-bottom:6px">Processing</div><div id="qProcessing"></div></div>
+            </div>
+            <div class="panel-body" style="border-top:1px solid var(--line)">
+              <div class="tiny" style="margin-bottom:6px">Consensus Highlights</div>
+              <ul id="consensusList" class="list"></ul>
+            </div>
           </div>
           <div class="panel">
             <div class="panel-h"><div class="panel-title">Recent Conversations</div><div class="tiny">Saved markdown transcripts</div></div>
             <div id="convList" class="panel-body"></div>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="panel">
+            <div class="panel-h"><div class="panel-title">System Health</div><div class="tiny">Operational diagnostics</div></div>
+            <div class="panel-body">
+              <ul id="healthList" class="list"></ul>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><div class="panel-title">Event Inspector</div><div class="tiny">Raw JSON (debug only)</div></div>
+            <div class="panel-body"><pre id="eventInspector">{}</pre></div>
           </div>
         </div>
       </section>
@@ -540,11 +641,17 @@ function indexHtml(): string {
     const qIncomingEl = document.getElementById('qIncoming');
     const qProcessingEl = document.getElementById('qProcessing');
     const convListEl = document.getElementById('convList');
+    const consensusListEl = document.getElementById('consensusList');
+    const healthListEl = document.getElementById('healthList');
     const laneActiveEl = document.getElementById('laneActive');
     const laneWaitingEl = document.getElementById('laneWaiting');
     const laneIdleEl = document.getElementById('laneIdle');
+    const inboxCountEl = document.getElementById('inboxCount');
+    const progressCountEl = document.getElementById('progressCount');
+    const doneCountEl = document.getElementById('doneCount');
     let events = [];
     let selectedEventId = null;
+    let currentStatus = null;
 
     function fmtTime(ts) {
       if (!ts) return '-';
@@ -720,6 +827,7 @@ function indexHtml(): string {
       eventsList.innerHTML = rows || '<div class="tiny muted">No events yet</div>';
       eventCountEl.textContent = String(events.length);
       renderAgentLanes();
+      renderDerivedInsights();
 
       const nodes = eventsList.querySelectorAll('.event');
       nodes.forEach((node) => {
@@ -770,7 +878,40 @@ function indexHtml(): string {
           + '</div>';
       }).join('');
     }
+    function renderDerivedInsights() {
+      const recent = events.slice(-400);
+      const handoffCount = recent.filter((e) => e.type === 'chain_handoff').length;
+      const stepDoneCount = recent.filter((e) => e.type === 'chain_step_done').length;
+      const responseReadyCount = recent.filter((e) => e.type === 'response_ready').length;
+      const uniqueAgents = new Set(recent.map((e) => e.agentId).filter(Boolean)).size;
+      const latestEvent = recent.length ? recent[recent.length - 1] : null;
+
+      const incoming = Number(currentStatus?.queue?.incoming || 0);
+      const processing = Number(currentStatus?.queue?.processing || 0);
+      const outgoing = Number(currentStatus?.queue?.outgoing || 0);
+      inboxCountEl.textContent = String(incoming);
+      progressCountEl.textContent = String(processing);
+      doneCountEl.textContent = String(outgoing + responseReadyCount);
+
+      const consensusItems = [
+        'Recent handoffs completed: ' + handoffCount,
+        'Steps completed recently: ' + stepDoneCount,
+        'Unique active agents in feed: ' + uniqueAgents,
+        latestEvent ? ('Latest activity: ' + shortText(humanSummary(latestEvent), 120)) : 'Latest activity: none yet',
+      ];
+      consensusListEl.innerHTML = consensusItems.map((item) => '<li>' + esc(item) + '</li>').join('');
+
+      const processorUp = !!currentStatus?.processorAlive;
+      const healthItems = [
+        'Queue processor is ' + (processorUp ? 'online' : 'offline'),
+        'Queue depth: incoming ' + incoming + ', processing ' + processing + ', outgoing ' + outgoing,
+        processing > 0 ? 'Workload active: agents are currently executing tasks.' : 'No active execution backlog detected.',
+        'Event stream coverage: ' + recent.length + ' recent events loaded.',
+      ];
+      healthListEl.innerHTML = healthItems.map((item) => '<li>' + esc(item) + '</li>').join('');
+    }
     function applyStatus(status) {
+      currentStatus = status;
       incomingEl.textContent = String(status.queue.incoming || 0);
       processingEl.textContent = String(status.queue.processing || 0);
       outgoingEl.textContent = String(status.queue.outgoing || 0);
@@ -781,6 +922,7 @@ function indexHtml(): string {
       const label = status.processorAlive ? 'Processor Online' : 'Processor Offline';
       processorBadge.querySelector('span:last-child').textContent = label;
       processorBadge.className = 'badge ' + (status.processorAlive ? 'ok' : 'bad');
+      renderDerivedInsights();
     }
 
     async function bootstrap() {
