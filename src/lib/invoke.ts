@@ -132,21 +132,31 @@ export async function invokeAgent(
 
         const codexOutput = await runCommand('codex', codexArgs, workingDir);
 
-        // Parse JSONL output and extract final agent_message
+        // Parse JSONL output and extract assistant text across known event shapes.
         let response = '';
         const lines = codexOutput.trim().split('\n');
         for (const line of lines) {
             try {
                 const json = JSON.parse(line);
-                if (json.type === 'item.completed' && json.item?.type === 'agent_message') {
+                if (json.type === 'item.completed' && json.item?.type === 'agent_message' && typeof json.item?.text === 'string') {
                     response = json.item.text;
+                    continue;
+                }
+
+                // Fallbacks for schema variants (message/content/output_text).
+                const candidate = extractTextCandidate(json);
+                if (candidate) {
+                    response = candidate;
                 }
             } catch (_e) {
                 // Ignore lines that aren't valid JSON
             }
         }
 
-        return response || 'Sorry, I could not generate a response from Codex.';
+        // Final fallback: if Codex returned non-empty output but no recognized JSON shape,
+        // return the plain output instead of a misleading empty-response message.
+        const trimmed = codexOutput.trim();
+        return response || trimmed || 'Sorry, I could not generate a response from Codex.';
     } else {
         // Default to Claude (Anthropic)
         log('INFO', `Using Claude provider (agent: ${agentId})`);
@@ -169,4 +179,37 @@ export async function invokeAgent(
 
         return await runCommand('claude', claudeArgs, workingDir);
     }
+}
+
+function extractTextCandidate(event: any): string | null {
+    const values: Array<unknown> = [
+        event?.output_text,
+        event?.text,
+        event?.message?.text,
+        event?.item?.text,
+    ];
+
+    for (const value of values) {
+        if (typeof value === 'string' && value.trim()) return value.trim();
+    }
+
+    const contentLists: Array<unknown> = [
+        event?.item?.content,
+        event?.message?.content,
+        event?.content,
+    ];
+
+    for (const list of contentLists) {
+        if (!Array.isArray(list)) continue;
+        const parts: string[] = [];
+        for (const chunk of list) {
+            const text = (chunk as any)?.text;
+            if (typeof text === 'string' && text.trim()) {
+                parts.push(text.trim());
+            }
+        }
+        if (parts.length > 0) return parts.join('\n').trim();
+    }
+
+    return null;
 }
