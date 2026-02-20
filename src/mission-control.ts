@@ -358,9 +358,29 @@ function indexHtml(): string {
       min-height: 2px;
     }
     .trend-note { margin-top: 6px; font-size: 11px; color: var(--muted); }
+    .inspector-details {
+      border-top: 1px solid var(--line);
+      background: #fcfdff;
+      padding: 8px 10px;
+    }
+    .inspector-details summary {
+      cursor: pointer;
+      color: #4a5f84;
+      font-size: 12px;
+      font-weight: 600;
+      outline: none;
+      list-style: none;
+    }
+    .inspector-details summary::-webkit-details-marker { display: none; }
+    .inspector-details summary::before {
+      content: "▸ ";
+      color: #7b8fb3;
+    }
+    .inspector-details[open] summary::before { content: "▾ "; }
+    .inspector-body { margin-top: 8px; }
     .layout {
       display: grid;
-      grid-template-columns: 1.1fr 1fr 1fr;
+      grid-template-columns: 1.35fr .95fr;
       gap: 14px;
       min-height: 0;
     }
@@ -382,7 +402,7 @@ function indexHtml(): string {
       background: #fff;
     }
     .panel-title { font-size: 13px; font-weight: 700; color: #22344f; }
-    .panel-body { max-height: 32vh; overflow: auto; padding: 10px; background: #fff; }
+    .panel-body { max-height: 34vh; overflow: auto; padding: 10px; background: #fff; }
     .event {
       border: 1px solid var(--line-2);
       border-radius: 8px;
@@ -616,9 +636,6 @@ function indexHtml(): string {
             <div class="panel-h"><div class="panel-title">Recent Conversations</div><div class="tiny">Saved markdown transcripts</div></div>
             <div id="convList" class="panel-body"></div>
           </div>
-        </div>
-
-        <div class="col">
           <div class="panel">
             <div class="panel-h"><div class="panel-title">Health</div><div class="tiny">Diagnostics</div></div>
             <div class="panel-body">
@@ -631,8 +648,13 @@ function indexHtml(): string {
             </div>
           </div>
           <div class="panel">
-            <div class="panel-h"><div class="panel-title">Inspector</div><div class="tiny">Raw JSON</div></div>
-            <div class="panel-body"><pre id="eventInspector">{}</pre></div>
+            <div class="panel-h"><div class="panel-title">Inspector</div><div class="tiny">Debug</div></div>
+            <div class="inspector-details">
+              <details>
+                <summary>Show raw event JSON</summary>
+                <div class="inspector-body"><pre id="eventInspector">{}</pre></div>
+              </details>
+            </div>
           </div>
         </div>
       </section>
