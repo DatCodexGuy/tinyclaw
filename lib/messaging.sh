@@ -8,12 +8,24 @@ send_message() {
 
     log "[$source] Sending: ${message:0:50}..."
 
+    if [ ! -f "$SCRIPT_DIR/dist/cli-send.js" ] || \
+       [ "$SCRIPT_DIR/src/cli-send.ts" -nt "$SCRIPT_DIR/dist/cli-send.js" ]; then
+        log "[$source] Building CLI sender..."
+        cd "$SCRIPT_DIR" && npm run build:main >/dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            echo "error: failed to build CLI sender"
+            return 1
+        fi
+    fi
+
     cd "$SCRIPT_DIR"
-    RESPONSE=$(claude --dangerously-skip-permissions -c -p "$message" 2>&1)
+    RESPONSE=$(node "$SCRIPT_DIR/dist/cli-send.js" "$message" "$source" 2>&1)
+    local response_exit=$?
 
     echo "$RESPONSE"
 
     log "[$source] Response length: ${#RESPONSE} chars"
+    return "$response_exit"
 }
 
 # View logs

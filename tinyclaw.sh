@@ -351,8 +351,25 @@ case "${1:-}" in
                     node "$SCRIPT_DIR/dist/visualizer/team-visualizer.js"
                 fi
                 ;;
+            mission|web)
+                # Build mission control API/UI if needed
+                if [ ! -f "$SCRIPT_DIR/dist/mission-control.js" ] || \
+                   [ "$SCRIPT_DIR/src/mission-control.ts" -nt "$SCRIPT_DIR/dist/mission-control.js" ]; then
+                    echo -e "${BLUE}Building mission control...${NC}"
+                    cd "$SCRIPT_DIR" && npm run build:main 2>/dev/null
+                    if [ $? -ne 0 ]; then
+                        echo -e "${RED}Failed to build mission control.${NC}"
+                        exit 1
+                    fi
+                fi
+                if [ -n "$3" ]; then
+                    node "$SCRIPT_DIR/dist/mission-control.js" --port "$3"
+                else
+                    node "$SCRIPT_DIR/dist/mission-control.js"
+                fi
+                ;;
             *)
-                echo "Usage: $0 team {list|add|remove|show|visualize}"
+                echo "Usage: $0 team {list|add|remove|show|visualize|mission}"
                 echo ""
                 echo "Team Commands:"
                 echo "  list                   List all configured teams"
@@ -360,6 +377,7 @@ case "${1:-}" in
                 echo "  remove <id>            Remove a team"
                 echo "  show <id>              Show team configuration"
                 echo "  visualize [team_id]    Live TUI dashboard for team collaboration"
+                echo "  mission [port]         Web mission control + queue/event APIs"
                 echo ""
                 echo "Examples:"
                 echo "  $0 team list"
@@ -368,6 +386,8 @@ case "${1:-}" in
                 echo "  $0 team remove dev"
                 echo "  $0 team visualize"
                 echo "  $0 team visualize dev"
+                echo "  $0 team mission"
+                echo "  $0 team mission 4317"
                 echo ""
                 echo "In chat, use '@team_id message' to route to a team's leader agent."
                 echo "Agents can collaborate by mentioning @teammate in responses."
@@ -406,7 +426,7 @@ case "${1:-}" in
         echo "  provider [name] [--model model]  Show or switch AI provider"
         echo "  model [name]             Show or switch AI model"
         echo "  agent {list|add|remove|show|reset|provider}  Manage agents"
-        echo "  team {list|add|remove|show|visualize}  Manage teams"
+        echo "  team {list|add|remove|show|visualize|mission}  Manage teams"
         echo "  pairing {pending|approved|list|approve <code>|unpair <channel> <sender_id>}  Manage sender approvals"
         echo "  update                   Update TinyClaw to latest version"
         echo "  attach                   Attach to tmux session"
@@ -422,6 +442,7 @@ case "${1:-}" in
         echo "  $0 agent add"
         echo "  $0 team list"
         echo "  $0 team visualize dev"
+        echo "  $0 team mission 4317"
         echo "  $0 pairing pending"
         echo "  $0 pairing approve ABCD1234"
         echo "  $0 pairing unpair telegram 123456789"
