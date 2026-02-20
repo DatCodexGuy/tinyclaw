@@ -187,13 +187,17 @@ function indexHtml(): string {
     .sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
     .nav { margin-top: 18px; display: grid; gap: 8px; }
     .nav-item {
+      display: block;
       border: 1px solid var(--line);
       border-radius: 8px;
-      padding: 10px;
+      padding: 9px 10px;
       background: #fff;
       font-size: 12px;
+      text-decoration: none;
+      color: #2a3c58;
     }
     .nav-item strong { display: block; margin-bottom: 3px; font-size: 12px; color: #1f2c42; }
+    .nav-item:hover { border-color: #cbd8f0; background: #f8fbff; }
     .badge {
       margin-top: 12px;
       display: inline-flex;
@@ -242,15 +246,6 @@ function indexHtml(): string {
       background: var(--soft);
       padding: 5px 10px;
       font-size: 11px;
-      color: var(--muted);
-    }
-    .search {
-      border: 1px solid var(--line-2);
-      background: var(--soft);
-      border-radius: 8px;
-      padding: 7px 10px;
-      min-width: 260px;
-      font-size: 12px;
       color: var(--muted);
     }
     .live-pill {
@@ -305,7 +300,7 @@ function indexHtml(): string {
       gap: 8px;
     }
     .board-title { font-size: 16px; font-weight: 650; }
-    .board-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .board-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
     .board-btn {
       border: 1px solid #c9d7f4;
       background: var(--brand);
@@ -339,17 +334,7 @@ function indexHtml(): string {
       color: var(--muted);
       background: #fff;
     }
-    .lane-card {
-      border: 1px solid var(--line-2);
-      border-radius: 8px;
-      background: #fff;
-      padding: 9px;
-      font-size: 12px;
-      color: #30435f;
-      margin-bottom: 8px;
-    }
-    .lane-card:last-child { margin-bottom: 0; }
-    .lane-muted { color: var(--muted); font-size: 11px; margin-top: 4px; }
+    .mini-note { color: var(--muted); font-size: 11px; margin-top: 6px; }
     .list {
       margin: 0;
       padding-left: 16px;
@@ -397,7 +382,7 @@ function indexHtml(): string {
       background: #fff;
     }
     .panel-title { font-size: 13px; font-weight: 700; color: #22344f; }
-    .panel-body { max-height: 40vh; overflow: auto; padding: 10px; background: #fff; }
+    .panel-body { max-height: 32vh; overflow: auto; padding: 10px; background: #fff; }
     .event {
       border: 1px solid var(--line-2);
       border-radius: 8px;
@@ -515,7 +500,6 @@ function indexHtml(): string {
       }
       .cards { grid-template-columns: repeat(2, minmax(100px, 1fr)); }
       .topbar { flex-direction: column; align-items: stretch; }
-      .search { min-width: 0; width: 100%; }
     }
   </style>
 </head>
@@ -526,21 +510,20 @@ function indexHtml(): string {
       <div class="sub">Multi-Agent Orchestration</div>
       <div id="processorBadge" class="badge bad"><span class="dot"></span><span>Processor Offline</span></div>
       <div class="nav">
-        <div class="nav-item"><strong>Dashboard</strong>Live system and task orchestration overview</div>
-        <div class="nav-item"><strong>Task Board</strong>Inbox / in-progress / completed flow</div>
-        <div class="nav-item"><strong>Agents</strong>Team workload and handoff states</div>
-        <div class="nav-item"><strong>Trace Feed</strong>Human-readable event activity stream</div>
+        <a class="nav-item" href="#overview"><strong>Overview</strong>Dashboard</a>
+        <a class="nav-item" href="#board"><strong>Task Board</strong>Flow</a>
+        <a class="nav-item" href="#agents"><strong>Agents</strong>Lanes</a>
+        <a class="nav-item" href="#feed"><strong>Trace</strong>Realtime</a>
       </div>
     </aside>
     <main class="main">
-      <section class="topbar">
+      <section id="overview" class="topbar">
         <div>
           <div class="heading">Multi-Agent Dashboard</div>
-          <div class="tiny">Monitor and orchestrate your TinyClaw team</div>
+          <div class="tiny">Live mission overview</div>
         </div>
         <div class="chips">
           <span class="live-pill">Live</span>
-          <input class="search" value="Search tasks, agents, messages..." readonly />
           <span class="chip">Home: <span id="homePath" class="mono"></span></span>
           <span class="chip">Updated: <span id="lastUpdate" class="mono">-</span></span>
         </div>
@@ -554,35 +537,32 @@ function indexHtml(): string {
         <div class="card"><div class="k">Total Events</div><div id="eventCount" class="v">0</div><div class="metric-spark"><div id="eventFill" class="metric-fill"></div></div></div>
       </section>
 
-      <section class="board-wrap">
+      <section id="board" class="board-wrap">
         <div class="board-h">
           <div>
             <div class="board-title">Task Board</div>
-            <div class="board-sub">Track and manage agent tasks</div>
+            <div class="board-sub">Queue flow status</div>
           </div>
           <button class="board-btn" type="button">New Task</button>
         </div>
         <div class="board-cols">
           <div>
             <div class="col-head">Inbox <span class="count-pill" id="inboxCount">0</span></div>
-            <div class="lane-card">Incoming queue contains new work waiting to be picked up.</div>
-            <div class="lane-muted">Messages move here first before processing starts.</div>
+            <div class="mini-note">New tasks waiting for routing.</div>
           </div>
           <div>
             <div class="col-head">In Progress <span class="count-pill" id="progressCount">0</span></div>
-            <div class="lane-card">Active tasks currently being handled by one or more agents.</div>
-            <div class="lane-muted">This reflects processing queue activity and live handoffs.</div>
+            <div class="mini-note">Tasks currently executing.</div>
           </div>
           <div>
             <div class="col-head">Done <span class="count-pill" id="doneCount">0</span></div>
-            <div class="lane-card">Completed responses delivered successfully.</div>
-            <div class="lane-muted">Output queue and response-ready events roll up here.</div>
+            <div class="mini-note">Completed and delivered output.</div>
           </div>
         </div>
       </section>
 
       <section class="layout">
-        <div class="col">
+        <div id="agents" class="col">
           <div class="panel">
             <div class="panel-h">
               <div class="panel-title">Agent Performance</div>
@@ -594,7 +574,7 @@ function indexHtml(): string {
                   <option value="chain_step_done">step done</option>
                   <option value="response_ready">response ready</option>
                 </select>
-                <input id="searchBox" placeholder="search flow/details" />
+                <input id="searchBox" placeholder="search" />
               </div>
             </div>
             <div class="panel-body">
@@ -620,15 +600,15 @@ function indexHtml(): string {
           </div>
         </div>
 
-        <div class="col">
+        <div class="col" id="feed">
           <div class="panel">
-            <div class="panel-h"><div class="panel-title">Consensus & Queue</div><div class="tiny">Current collaboration signals</div></div>
+            <div class="panel-h"><div class="panel-title">Queue & Consensus</div><div class="tiny">Live</div></div>
             <div class="panel-body grid-two">
               <div><div class="tiny" style="margin-bottom:6px">Incoming</div><div id="qIncoming"></div></div>
               <div><div class="tiny" style="margin-bottom:6px">Processing</div><div id="qProcessing"></div></div>
             </div>
             <div class="panel-body" style="border-top:1px solid var(--line)">
-              <div class="tiny" style="margin-bottom:6px">Consensus Highlights</div>
+              <div class="tiny" style="margin-bottom:6px">Highlights</div>
               <ul id="consensusList" class="list"></ul>
             </div>
           </div>
@@ -640,18 +620,18 @@ function indexHtml(): string {
 
         <div class="col">
           <div class="panel">
-            <div class="panel-h"><div class="panel-title">System Health</div><div class="tiny">Operational diagnostics</div></div>
+            <div class="panel-h"><div class="panel-title">Health</div><div class="tiny">Diagnostics</div></div>
             <div class="panel-body">
               <ul id="healthList" class="list"></ul>
               <div class="trend-row">
-                <div class="trend-title">Throughput Trend (last 10 windows)</div>
+                <div class="trend-title">Throughput Trend</div>
                 <div id="throughputBars" class="trend-bars"></div>
                 <div id="throughputNote" class="trend-note">No data yet</div>
               </div>
             </div>
           </div>
           <div class="panel">
-            <div class="panel-h"><div class="panel-title">Event Inspector</div><div class="tiny">Raw JSON (debug only)</div></div>
+            <div class="panel-h"><div class="panel-title">Inspector</div><div class="tiny">Raw JSON</div></div>
             <div class="panel-body"><pre id="eventInspector">{}</pre></div>
           </div>
         </div>
