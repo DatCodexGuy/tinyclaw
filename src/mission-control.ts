@@ -567,6 +567,14 @@ function indexHtml(): string {
       if (raw.length <= limit) return raw;
       return raw.slice(0, limit - 1) + '…';
     }
+    function esc(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
     function eventTypeClass(ev) {
       if (ev.type === 'chain_handoff') return 'handoff';
       if (ev.type === 'response_ready' || ev.type === 'team_chain_end') return 'done';
@@ -672,10 +680,13 @@ function indexHtml(): string {
           return;
         }
         target.innerHTML = list.map((row) => {
+          const id = esc(row.id);
+          const state = esc(titleCase(row.state));
+          const summary = esc(row.lastSummary);
           return '<div class="agent">'
-            + '<div class="agent-top"><div class="agent-name">@' + row.id + '</div><span class="state ' + stateClass + '">' + titleCase(row.state) + '</span></div>'
+            + '<div class="agent-top"><div class="agent-name">@' + id + '</div><span class="state ' + stateClass + '">' + state + '</span></div>'
             + '<div class="agent-meta">Steps: ' + row.stepsDone + '/' + row.stepsStart + ' · Handoffs: ' + row.handoffOut + '→' + row.handoffIn + '</div>'
-            + '<div class="agent-meta">' + row.lastSummary + '</div>'
+            + '<div class="agent-meta">' + summary + '</div>'
             + '</div>';
         }).join('');
       };
@@ -696,12 +707,14 @@ function indexHtml(): string {
       const rows = filtered.map((ev, idx) => {
         const syntheticId = String(ev.timestamp || 0) + ':' + String(idx);
         const cls = syntheticId === selectedEventId ? 'event selected' : 'event';
-        const typeLabel = titleCase(ev.type || 'event');
+        const typeLabel = esc(titleCase(ev.type || 'event'));
         const typeClass = eventTypeClass(ev);
+        const subtitle = esc(eventSubtitle(ev));
+        const summary = esc(shortText(humanSummary(ev), 240));
         return '<div class="' + cls + '" data-eid="' + syntheticId + '">'
           + '<div class="event-top"><span class="type ' + typeClass + '">' + typeLabel + '</span><span class="tiny mono">' + fmtTime(ev.timestamp) + '</span></div>'
-          + '<div class="flow mono">' + eventSubtitle(ev) + '</div>'
-          + '<div class="detail">' + shortText(humanSummary(ev), 240) + '</div>'
+          + '<div class="flow mono">' + subtitle + '</div>'
+          + '<div class="detail">' + summary + '</div>'
           + '</div>';
       }).join('');
       eventsList.innerHTML = rows || '<div class="tiny muted">No events yet</div>';
@@ -727,10 +740,12 @@ function indexHtml(): string {
       const renderItems = (items) => {
         if (!items || items.length === 0) return '<div class="tiny muted">empty</div>';
         return items.map((item) => {
-          const msgId = item.messageId ? String(item.messageId) : 'n/a';
-          const preview = shortText(item.preview || 'No message preview available', 140);
+          const msgId = esc(item.messageId ? String(item.messageId) : 'n/a');
+          const preview = esc(shortText(item.preview || 'No message preview available', 140));
+          const channel = esc(channelLabel(item.channel));
+          const sender = esc(item.sender || 'unknown sender');
           return '<div class="q-item">'
-            + '<div><span class="label">' + channelLabel(item.channel) + '</span><span class="tiny">' + (item.sender || 'unknown sender') + '</span></div>'
+            + '<div><span class="label">' + channel + '</span><span class="tiny">' + sender + '</span></div>'
             + '<div class="tiny muted">' + preview + '</div>'
             + '<div class="mono tiny muted">id: ' + msgId + '</div>'
             + '</div>';
@@ -746,9 +761,11 @@ function indexHtml(): string {
       }
       convListEl.innerHTML = rows.map((row) => {
         const when = fmtTime(row.timestamp);
+        const team = esc(row.teamId || 'unknown');
+        const file = esc(row.file || '');
         return '<div class="conv-item">'
-          + '<div><span class="label">Team ' + (row.teamId || 'unknown') + '</span><span class="tiny muted">' + when + '</span></div>'
-          + '<div class="tiny">Transcript: <span class="mono">' + (row.file || '') + '</span></div>'
+          + '<div><span class="label">Team ' + team + '</span><span class="tiny muted">' + when + '</span></div>'
+          + '<div class="tiny">Transcript: <span class="mono">' + file + '</span></div>'
           + '<div class="tiny muted">Saved conversation artifact ready for review.</div>'
           + '</div>';
       }).join('');
