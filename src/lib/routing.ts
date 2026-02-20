@@ -33,8 +33,7 @@ export function isTeammate(
 }
 
 /**
- * Extract the first valid @teammate mention from a response text.
- * Returns the teammate agent ID and the rest of the message, or null if no teammate mentioned.
+ * Extract valid teammate mentions from a response text.
  */
 export function extractTeammateMentions(
     response: string,
@@ -46,21 +45,19 @@ export function extractTeammateMentions(
     const results: { teammateId: string; message: string }[] = [];
     const seen = new Set<string>();
 
-    // TODO: Support cross-team communication — allow agents to mention agents
-    // on other teams or use [@team_id: message] to route to another team's leader.
+    // Keep separate regex instances for exec/replace; sharing one /g regex can
+    // mutate lastIndex across calls and cause stalled parsing loops.
+    const execTagRegex = /\[@(\S+?):\s*([\s\S]*?)\]/g;
+    const stripTagRegex = /\[@\S+?:\s*[\s\S]*?\]/g;
 
-    // Tag format: [@agent_id: message] or [@agent1,agent2: message]
-    const tagRegex = /\[@(\S+?):\s*([\s\S]*?)\]/g;
+    const sharedContext = response.replace(stripTagRegex, '').trim();
     let tagMatch: RegExpExecArray | null;
-    while ((tagMatch = tagRegex.exec(response)) !== null) {
-        // Strip all [@teammate: ...] tags from the full response to get shared context
-        const sharedContext = response.replace(tagRegex, '').trim();
+    while ((tagMatch = execTagRegex.exec(response)) !== null) {
         const directMessage = tagMatch[2].trim();
         const fullMessage = sharedContext
             ? `${sharedContext}\n\n------\n\nDirected to you:\n${directMessage}`
             : directMessage;
 
-        // Support comma-separated agent IDs: [@coder,reviewer: message]
         const candidateIds = tagMatch[1].toLowerCase().split(',').map(id => id.trim()).filter(Boolean);
         for (const candidateId of candidateIds) {
             if (!seen.has(candidateId) && isTeammate(candidateId, currentAgentId, teamId, teams, agents)) {
@@ -69,6 +66,7 @@ export function extractTeammateMentions(
             }
         }
     }
+
     return results;
 }
 

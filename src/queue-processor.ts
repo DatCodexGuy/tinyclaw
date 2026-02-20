@@ -25,17 +25,6 @@ import {
 import { log, emitEvent } from './lib/logging';
 import { parseAgentRouting, findTeamForAgent, getAgentResetFlag, extractTeammateMentions } from './lib/routing';
 import { invokeAgent } from './lib/invoke';
-import { jsonrepair } from 'jsonrepair';
-
-/** Parse JSON with automatic repair for malformed content (e.g. bad escapes). */
-function safeParseJSON<T = unknown>(raw: string, label?: string): T {
-    try {
-        return JSON.parse(raw);
-    } catch {
-        log('WARN', `Invalid JSON${label ? ` in ${label}` : ''}, attempting auto-repair`);
-        return JSON.parse(jsonrepair(raw));
-    }
-}
 
 // Ensure directories exist
 [QUEUE_INCOMING, QUEUE_OUTGOING, QUEUE_PROCESSING, FILES_DIR, path.dirname(LOG_FILE)].forEach(dir => {
@@ -52,6 +41,45 @@ const conversations = new Map<string, Conversation>();
 
 const MAX_CONVERSATION_MESSAGES = 50;
 const LONG_RESPONSE_THRESHOLD = 4000;
+const INFRA_AGENT_ID = 'infra';
+const CODER_AGENT_ID = 'coder';
+const REVIEWER_AGENT_ID = 'reviewer';
+const INFRA_HINT_RE = /\b(infra|infrastructure|server|host|vm|lxc|container|docker|k8s|kubernetes|proxmox|ssh|network|deploy|deployment)\b/i;
+const CODER_HINT_RE = /\b(code|coding|implement|fix|bug|feature|refactor|script|automation|build|compile|typescript|rust|python|bash|api)\b/i;
+const REVIEWER_HINT_RE = /\b(review|validate|verify|test|qa|quality|audit|security|regression|check)\b/i;
+
+function inferAutoHandoffAgents(
+    isInternal: boolean,
+    isTeamRouted: boolean,
+    agentId: string,
+    teamContext: { teamId: string; team: TeamConfig } | null,
+    rawMessage: string
+): string[] {
+    if (isInternal || !isTeamRouted || !teamContext) return [];
+    if (agentId !== teamContext.team.leader_agent) return [];
+
+    const teamAgents = teamContext.team.agents;
+    const picks: string[] = [];
+    const addIfAvailable = (candidate: string) => {
+        if (candidate === agentId) return;
+        if (!teamAgents.includes(candidate)) return;
+        if (picks.includes(candidate)) return;
+        picks.push(candidate);
+    };
+
+    // Baseline collaboration: always engage execution + quality lanes.
+    addIfAvailable(CODER_AGENT_ID);
+    addIfAvailable(REVIEWER_AGENT_ID);
+
+    // Infra lane is added when infra intent appears.
+    if (INFRA_HINT_RE.test(rawMessage)) addIfAvailable(INFRA_AGENT_ID);
+
+    // Keep existing hints additive.
+    if (CODER_HINT_RE.test(rawMessage)) addIfAvailable(CODER_AGENT_ID);
+    if (REVIEWER_HINT_RE.test(rawMessage)) addIfAvailable(REVIEWER_AGENT_ID);
+
+    return picks;
+}
 
 /**
  * If a response exceeds the threshold, save full text as a .md file
@@ -239,7 +267,7 @@ async function processMessage(messageFile: string): Promise<void> {
         fs.renameSync(messageFile, processingFile);
 
         // Read message
-        const messageData: MessageData = safeParseJSON(fs.readFileSync(processingFile, 'utf8'), path.basename(processingFile));
+        const messageData: MessageData = JSON.parse(fs.readFileSync(processingFile, 'utf8'));
         const { channel, sender, message: rawMessage, timestamp, messageId } = messageData;
         const isInternal = !!messageData.conversationId;
 
@@ -358,8 +386,7 @@ async function processMessage(messageFile: string): Promise<void> {
             response = await invokeAgent(agent, agentId, message, workspacePath, shouldReset, agents, teams);
         } catch (error) {
             const provider = agent.provider || 'anthropic';
-            const providerLabel = provider === 'openai' ? 'Codex' : provider === 'opencode' ? 'OpenCode' : 'Claude';
-            log('ERROR', `${providerLabel} error (agent: ${agentId}): ${(error as Error).message}`);
+            log('ERROR', `${provider === 'openai' ? 'Codex' : 'Claude'} error (agent: ${agentId}): ${(error as Error).message}`);
             response = "Sorry, I encountered an error processing your request. Please check the queue logs.";
         }
 
@@ -442,12 +469,26 @@ async function processMessage(messageFile: string): Promise<void> {
         const teammateMentions = extractTeammateMentions(
             response, agentId, conv.teamContext.teamId, teams, agents
         );
+        const autoHandoffAgents = teammateMentions.length === 0
+            ? inferAutoHandoffAgents(isInternal, isTeamRouted, agentId, teamContext, rawMessage)
+            : [];
 
-        if (teammateMentions.length > 0 && conv.totalMessages < conv.maxMessages) {
+        if ((teammateMentions.length > 0 || autoHandoffAgents.length > 0) && conv.totalMessages < conv.maxMessages) {
+            const mentionsToEnqueue = [...teammateMentions];
+            if (autoHandoffAgents.length > 0) {
+                for (const autoTarget of autoHandoffAgents) {
+                    mentionsToEnqueue.push({
+                        teammateId: autoTarget,
+                        message: `[Auto-routed team assist]\n${rawMessage}\n\nLeader response context:\n${response}`.trim(),
+                    });
+                }
+                log('INFO', `Auto handoff policy engaged: @${agentId} → ${autoHandoffAgents.map(a => '@' + a).join(', ')}`);
+            }
+
             // Enqueue internal messages for each mention
-            conv.pending += teammateMentions.length;
-            conv.outgoingMentions.set(agentId, teammateMentions.length);
-            for (const mention of teammateMentions) {
+            conv.pending += mentionsToEnqueue.length;
+            conv.outgoingMentions.set(agentId, mentionsToEnqueue.length);
+            for (const mention of mentionsToEnqueue) {
                 log('INFO', `@${agentId} → @${mention.teammateId}`);
                 emitEvent('chain_handoff', { teamId: conv.teamContext.teamId, fromAgent: agentId, toAgent: mention.teammateId });
 
@@ -493,7 +534,7 @@ const agentProcessingChains = new Map<string, Promise<void>>();
  */
 function peekAgentId(filePath: string): string {
     try {
-        const messageData = safeParseJSON<MessageData>(fs.readFileSync(filePath, 'utf8'));
+        const messageData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
         const settings = getSettings();
         const agents = getAgents(settings);
         const teams = getTeams(settings);

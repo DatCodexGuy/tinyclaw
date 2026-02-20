@@ -152,7 +152,8 @@ start_daemon() {
     done
 
     # Queue pane
-    tmux send-keys -t "$TMUX_SESSION:0.$pane_idx" "cd '$SCRIPT_DIR' && node dist/queue-processor.js" C-m
+    local agent_timeout_ms="${TINYCLAW_AGENT_TIMEOUT_MS:-60000}"
+    tmux send-keys -t "$TMUX_SESSION:0.$pane_idx" "cd '$SCRIPT_DIR' && TINYCLAW_AGENT_TIMEOUT_MS=\"$agent_timeout_ms\" node dist/queue-processor.js" C-m
     tmux select-pane -t "$TMUX_SESSION:0.$pane_idx" -T "Queue"
     pane_idx=$((pane_idx + 1))
 
