@@ -267,7 +267,7 @@ function indexHtml(): string {
     .v { font-size: 23px; font-weight: 720; margin-top: 4px; }
     .layout {
       display: grid;
-      grid-template-columns: 1.3fr 1fr;
+      grid-template-columns: 1.15fr 1fr;
       gap: 12px;
       min-height: 0;
     }
@@ -353,9 +353,71 @@ function indexHtml(): string {
     }
     .filters { display: flex; gap: 8px; align-items: center; }
     .grid-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(140px, 1fr));
+      gap: 10px;
+    }
+    .lane {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(8, 14, 24, .82);
+      min-height: 120px;
+      overflow: hidden;
+    }
+    .lane-h {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .7px;
+      color: #c7d8f5;
+      background: rgba(20, 33, 53, .7);
+    }
+    .lane-b {
+      padding: 8px;
+      max-height: 210px;
+      overflow: auto;
+    }
+    .agent {
+      border: 1px solid #2a3a58;
+      border-radius: 8px;
+      background: rgba(14, 22, 36, .8);
+      padding: 7px;
+      margin-bottom: 7px;
+    }
+    .agent:last-child { margin-bottom: 0; }
+    .agent-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .agent-name { font-size: 12px; color: #d9e6ff; font-weight: 600; }
+    .state {
+      font-size: 10px;
+      border-radius: 999px;
+      padding: 1px 7px;
+      border: 1px solid #315c4a;
+      color: #a8f5d0;
+      background: rgba(45, 212, 137, .12);
+    }
+    .state.waiting {
+      border-color: #66532b;
+      color: #ffd99a;
+      background: rgba(255, 189, 74, .14);
+    }
+    .state.idle {
+      border-color: #35537a;
+      color: #bad6ff;
+      background: rgba(106, 168, 255, .14);
+    }
+    .agent-meta { font-size: 11px; color: var(--muted); line-height: 1.3; }
     @media (max-width: 1200px) {
       .cards { grid-template-columns: repeat(3, minmax(110px, 1fr)); }
       .layout { grid-template-columns: 1fr; }
+      .board { grid-template-columns: 1fr; }
     }
     @media (max-width: 860px) {
       .app { grid-template-columns: 1fr; }
@@ -431,6 +493,25 @@ function indexHtml(): string {
 
         <div class="col">
           <div class="panel">
+            <div class="panel-h"><div class="panel-title">Team Lanes</div><div class="tiny">Live per-agent workload</div></div>
+            <div class="panel-body">
+              <div class="board">
+                <div class="lane">
+                  <div class="lane-h">Active</div>
+                  <div id="laneActive" class="lane-b"></div>
+                </div>
+                <div class="lane">
+                  <div class="lane-h">Waiting</div>
+                  <div id="laneWaiting" class="lane-b"></div>
+                </div>
+                <div class="lane">
+                  <div class="lane-h">Idle</div>
+                  <div id="laneIdle" class="lane-b"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="panel">
             <div class="panel-h"><div class="panel-title">Event Inspector</div><div class="tiny">Selected event JSON</div></div>
             <div class="panel-body"><pre id="eventInspector">{}</pre></div>
           </div>
@@ -459,6 +540,9 @@ function indexHtml(): string {
     const qIncomingEl = document.getElementById('qIncoming');
     const qProcessingEl = document.getElementById('qProcessing');
     const convListEl = document.getElementById('convList');
+    const laneActiveEl = document.getElementById('laneActive');
+    const laneWaitingEl = document.getElementById('laneWaiting');
+    const laneIdleEl = document.getElementById('laneIdle');
     let events = [];
     let selectedEventId = null;
 
@@ -518,6 +602,88 @@ function indexHtml(): string {
       const extra = ev.teamId ? ' · team ' + ev.teamId : '';
       return flow === '-' ? 'system' + extra : flow + extra;
     }
+    function renderAgentLanes() {
+      const stats = new Map();
+      const upsert = (id) => {
+        if (!id) return null;
+        if (!stats.has(id)) {
+          stats.set(id, {
+            id,
+            state: 'idle',
+            stepsStart: 0,
+            stepsDone: 0,
+            handoffIn: 0,
+            handoffOut: 0,
+            lastAt: 0,
+            lastSummary: 'No recent activity',
+          });
+        }
+        return stats.get(id);
+      };
+
+      for (const ev of events.slice(-500)) {
+        if (!ev || !ev.type) continue;
+        if (ev.type === 'chain_step_start') {
+          const row = upsert(ev.agentId);
+          if (!row) continue;
+          row.state = 'active';
+          row.stepsStart += 1;
+          row.lastAt = ev.timestamp || row.lastAt;
+          row.lastSummary = 'Started a step';
+        } else if (ev.type === 'chain_step_done') {
+          const row = upsert(ev.agentId);
+          if (!row) continue;
+          row.state = 'idle';
+          row.stepsDone += 1;
+          row.lastAt = ev.timestamp || row.lastAt;
+          row.lastSummary = 'Completed a step';
+        } else if (ev.type === 'chain_handoff') {
+          const from = upsert(ev.fromAgent);
+          const to = upsert(ev.toAgent);
+          if (from) {
+            from.state = 'waiting';
+            from.handoffOut += 1;
+            from.lastAt = ev.timestamp || from.lastAt;
+            from.lastSummary = 'Delegated to @' + (ev.toAgent || '?');
+          }
+          if (to) {
+            to.state = 'active';
+            to.handoffIn += 1;
+            to.lastAt = ev.timestamp || to.lastAt;
+            to.lastSummary = 'Received handoff from @' + (ev.fromAgent || '?');
+          }
+        } else if (ev.type === 'response_ready' && ev.agentId) {
+          const row = upsert(ev.agentId);
+          if (!row) continue;
+          row.state = 'idle';
+          row.lastAt = ev.timestamp || row.lastAt;
+          row.lastSummary = 'Prepared final response';
+        }
+      }
+
+      const rows = Array.from(stats.values()).sort((a, b) => b.lastAt - a.lastAt);
+      const active = rows.filter((r) => r.state === 'active');
+      const waiting = rows.filter((r) => r.state === 'waiting');
+      const idle = rows.filter((r) => r.state === 'idle');
+
+      const renderList = (target, list, stateClass) => {
+        if (!list.length) {
+          target.innerHTML = '<div class="tiny muted">No agents currently in this lane.</div>';
+          return;
+        }
+        target.innerHTML = list.map((row) => {
+          return '<div class="agent">'
+            + '<div class="agent-top"><div class="agent-name">@' + row.id + '</div><span class="state ' + stateClass + '">' + titleCase(row.state) + '</span></div>'
+            + '<div class="agent-meta">Steps: ' + row.stepsDone + '/' + row.stepsStart + ' · Handoffs: ' + row.handoffOut + '→' + row.handoffIn + '</div>'
+            + '<div class="agent-meta">' + row.lastSummary + '</div>'
+            + '</div>';
+        }).join('');
+      };
+
+      renderList(laneActiveEl, active, '');
+      renderList(laneWaitingEl, waiting, 'waiting');
+      renderList(laneIdleEl, idle, 'idle');
+    }
     function renderEvents() {
       const typeFilter = typeFilterEl.value;
       const query = (searchBoxEl.value || '').toLowerCase().trim();
@@ -540,6 +706,7 @@ function indexHtml(): string {
       }).join('');
       eventsList.innerHTML = rows || '<div class="tiny muted">No events yet</div>';
       eventCountEl.textContent = String(events.length);
+      renderAgentLanes();
 
       const nodes = eventsList.querySelectorAll('.event');
       nodes.forEach((node) => {
