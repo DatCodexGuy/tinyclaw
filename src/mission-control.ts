@@ -352,6 +352,15 @@ function indexHtml(): string {
     .detail { font-size: 12px; color: #a9bde2; line-height: 1.35; }
 
     .grid-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .mini-grid { display: grid; grid-template-columns: repeat(3, minmax(90px, 1fr)); gap: 8px; }
+    .mini-stat {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #162845;
+      padding: 8px;
+    }
+    .mini-stat-k { font-size: 10px; color: #a9bde2; text-transform: uppercase; }
+    .mini-stat-v { font-size: 18px; font-weight: 700; color: #f3f8ff; margin-top: 2px; }
     .q-item, .conv-item { border-bottom: 1px solid var(--line); padding: 8px 2px; }
     .q-item:last-child, .conv-item:last-child { border-bottom: 0; }
     .label {
@@ -465,7 +474,41 @@ function indexHtml(): string {
         <div id="agents" class="col">
           <div class="panel">
             <div class="panel-h">
-              <div class="panel-title">Agent Performance</div>
+              <div class="panel-title">Agent Snapshot</div>
+              <div class="tiny">Live status</div>
+            </div>
+            <div class="panel-body">
+              <div class="mini-grid">
+                <div class="mini-stat"><div class="mini-stat-k">Active</div><div id="snapshotActive" class="mini-stat-v">0</div></div>
+                <div class="mini-stat"><div class="mini-stat-k">Waiting</div><div id="snapshotWaiting" class="mini-stat-v">0</div></div>
+                <div class="mini-stat"><div class="mini-stat-k">Idle</div><div id="snapshotIdle" class="mini-stat-v">0</div></div>
+              </div>
+              <div class="inspector-details" style="margin-top:10px; border-top:0; padding:0">
+                <details>
+                  <summary>Expand detailed lanes</summary>
+                  <div class="inspector-body">
+                    <div class="board">
+                      <div class="lane">
+                        <div class="lane-h">Active</div>
+                        <div id="laneActive" class="lane-b"></div>
+                      </div>
+                      <div class="lane">
+                        <div class="lane-h">Waiting</div>
+                        <div id="laneWaiting" class="lane-b"></div>
+                      </div>
+                      <div class="lane">
+                        <div class="lane-h">Idle</div>
+                        <div id="laneIdle" class="lane-b"></div>
+                      </div>
+                    </div>
+                  </div>
+                </details>
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-h">
+              <div class="panel-title">Realtime Trace Feed</div>
               <div class="filters">
                 <select id="typeFilter">
                   <option value="all">all events</option>
@@ -477,25 +520,6 @@ function indexHtml(): string {
                 <input id="searchBox" placeholder="search" />
               </div>
             </div>
-            <div class="panel-body">
-              <div class="board">
-                <div class="lane">
-                  <div class="lane-h">Active</div>
-                  <div id="laneActive" class="lane-b"></div>
-                </div>
-                <div class="lane">
-                  <div class="lane-h">Waiting</div>
-                  <div id="laneWaiting" class="lane-b"></div>
-                </div>
-                <div class="lane">
-                  <div class="lane-h">Idle</div>
-                  <div id="laneIdle" class="lane-b"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="panel">
-            <div class="panel-h"><div class="panel-title">Realtime Trace Feed</div><div class="tiny">Human-readable activity</div></div>
             <div id="eventsList" class="panel-body"></div>
           </div>
         </div>
@@ -568,6 +592,9 @@ function indexHtml(): string {
     const laneActiveEl = document.getElementById('laneActive');
     const laneWaitingEl = document.getElementById('laneWaiting');
     const laneIdleEl = document.getElementById('laneIdle');
+    const snapshotActiveEl = document.getElementById('snapshotActive');
+    const snapshotWaitingEl = document.getElementById('snapshotWaiting');
+    const snapshotIdleEl = document.getElementById('snapshotIdle');
     const inboxCountEl = document.getElementById('inboxCount');
     const progressCountEl = document.getElementById('progressCount');
     const doneCountEl = document.getElementById('doneCount');
@@ -704,6 +731,9 @@ function indexHtml(): string {
       const active = rows.filter((r) => r.state === 'active');
       const waiting = rows.filter((r) => r.state === 'waiting');
       const idle = rows.filter((r) => r.state === 'idle');
+      snapshotActiveEl.textContent = String(active.length);
+      snapshotWaitingEl.textContent = String(waiting.length);
+      snapshotIdleEl.textContent = String(idle.length);
 
       const renderList = (target, list, stateClass) => {
         if (!list.length) {
