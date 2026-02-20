@@ -22,6 +22,8 @@ type EventRecord = {
     [key: string]: unknown;
 };
 
+const MISSION_UI_VERSION = 'mc-2026-02-20-01';
+
 function ensureDir(dir: string): void {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
@@ -117,6 +119,7 @@ function statusPayload(): Record<string, unknown> {
     const settings = getSettings();
     return {
         ok: true,
+        uiVersion: MISSION_UI_VERSION,
         tinyclawHome: TINYCLAW_HOME,
         processorAlive: isQueueProcessorAlive(),
         queue: {
@@ -452,6 +455,7 @@ function indexHtml(): string {
         </div>
         <div class="chips">
           <span class="live-pill">Live</span>
+          <span class="chip">UI: <span id="uiVersion" class="mono">${MISSION_UI_VERSION}</span></span>
           <span class="chip">Home: <span id="homePath" class="mono"></span></span>
           <span class="chip">Updated: <span id="lastUpdate" class="mono">-</span></span>
         </div>
@@ -599,6 +603,7 @@ function indexHtml(): string {
     const teamFillEl = document.getElementById('teamFill');
     const eventFillEl = document.getElementById('eventFill');
     const processorBadge = document.getElementById('processorBadge');
+    const uiVersionEl = document.getElementById('uiVersion');
     const homePathEl = document.getElementById('homePath');
     const lastUpdateEl = document.getElementById('lastUpdate');
     const typeFilterEl = document.getElementById('typeFilter');
@@ -909,6 +914,7 @@ function indexHtml(): string {
       agentCountEl.textContent = String((status.agents || []).length);
       teamCountEl.textContent = String((status.teams || []).length);
       homePathEl.textContent = status.tinyclawHome || '-';
+      uiVersionEl.textContent = status.uiVersion || '${MISSION_UI_VERSION}';
       lastUpdateEl.textContent = fmtTime(status.timestamp);
       const label = status.processorAlive ? 'Processor Online' : 'Processor Offline';
       processorBadge.querySelector('span:last-child').textContent = label;
@@ -996,7 +1002,7 @@ function startServer(port: number): void {
         const reqUrl = new URL(req.url || '/', `http://${req.headers.host || '127.0.0.1'}`);
 
         if (reqUrl.pathname === '/health') {
-            return writeJson(res, 200, { ok: true, timestamp: Date.now() });
+            return writeJson(res, 200, { ok: true, uiVersion: MISSION_UI_VERSION, timestamp: Date.now() });
         }
         if (reqUrl.pathname === '/api/status') {
             return writeJson(res, 200, statusPayload());
@@ -1041,6 +1047,7 @@ function startServer(port: number): void {
             res.writeHead(200, {
                 'Content-Type': 'text/html; charset=utf-8',
                 'Content-Length': Buffer.byteLength(html),
+                'X-Mission-UI-Version': MISSION_UI_VERSION,
             });
             return res.end(html);
         }
