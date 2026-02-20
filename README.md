@@ -27,7 +27,6 @@
 - ✅ **Multi-team collaboration** - Agents hand off work to teammates via chain execution and fan-out
 - ✅ **Multi-channel** - Discord, WhatsApp, and Telegram
 - ✅ **Team Observation** - You can observe agent teams conversations via `tinyclaw team visualize`
-- ✅ **Mission Control (Web)** - Queue/event traceability API + web dashboard via `tinyclaw team mission`
 - ✅ **Multiple AI providers** - Anthropic Claude and OpenAI Codex using existing subscriptions without breaking ToS
 - ✅ **Parallel processing** - Agents process messages concurrently
 - ✅ **Live TUI dashboard** - Real-time team visualizer for monitoring agent chains
@@ -161,12 +160,6 @@ Commands work with `tinyclaw` (if CLI installed) or `./tinyclaw.sh` (direct scri
 | `team show <id>`      | Show team configuration            | `tinyclaw team show dev`      |
 | `team remove <id>`    | Remove a team                      | `tinyclaw team remove dev`    |
 | `team visualize [id]` | Live TUI dashboard for team chains | `tinyclaw team visualize dev` |
-| `team mission [port]` | Web dashboard + queue/events API | `tinyclaw team mission 4317` |
-
-Mission Control also auto-starts with `tinyclaw start` by default.
-
-- Disable auto-start: `export TINYCLAW_MISSION_AUTO=0`
-- Change default port: `export TINYCLAW_MISSION_PORT=4317`
 
 ### Configuration Commands
 

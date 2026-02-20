@@ -142,8 +142,6 @@ Monitor team chains in real-time with the TUI dashboard:
 ```bash
 tinyclaw team visualize         # Watch all teams
 tinyclaw team visualize dev     # Watch specific team
-tinyclaw team mission           # Web mission control dashboard + APIs
-tinyclaw team mission 4317      # Custom port
 ```
 
 The visualizer displays:
@@ -163,7 +161,6 @@ tinyclaw team add               # Add a new team (interactive wizard)
 tinyclaw team show dev          # Show team configuration
 tinyclaw team remove dev        # Remove a team
 tinyclaw team visualize [id]    # Live TUI dashboard
-tinyclaw team mission [port]    # Web dashboard (queue + event traceability)
 ```
 
 ### In-Chat Commands

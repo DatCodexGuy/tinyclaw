@@ -10,8 +10,7 @@
     "discord": "node dist/channels/discord-client.js",
     "telegram": "node dist/channels/telegram-client.js",
     "queue": "node dist/queue-processor.js",
-    "visualize": "node dist/visualizer/team-visualizer.js",
-    "mission": "node dist/mission-control.js"
+    "visualize": "node dist/visualizer/team-visualizer.js"
   },
   "dependencies": {
     "@types/react": "^19.2.14",

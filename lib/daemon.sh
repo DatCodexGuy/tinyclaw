@@ -130,18 +130,8 @@ start_daemon() {
     done
 
     # --- Build tmux session dynamically ---
-    local mission_auto="${TINYCLAW_MISSION_AUTO:-1}"
-    local mission_port="${TINYCLAW_MISSION_PORT:-4317}"
-    local mission_enabled=false
-    if [ "$mission_auto" != "0" ] && [ "$mission_auto" != "false" ]; then
-        mission_enabled=true
-    fi
-
-    # Total panes = N channels + queue + heartbeat + logs [+ mission]
+    # Total panes = N channels + queue + heartbeat + logs
     local total_panes=$(( ${#ACTIVE_CHANNELS[@]} + 3 ))
-    if [ "$mission_enabled" = true ]; then
-        total_panes=$(( total_panes + 1 ))
-    fi
 
     tmux new-session -d -s "$TMUX_SESSION" -n "tinyclaw" -c "$SCRIPT_DIR"
 
@@ -171,13 +161,6 @@ start_daemon() {
     tmux send-keys -t "$TMUX_SESSION:0.$pane_idx" "cd '$SCRIPT_DIR' && ./lib/heartbeat-cron.sh" C-m
     tmux select-pane -t "$TMUX_SESSION:0.$pane_idx" -T "Heartbeat"
     pane_idx=$((pane_idx + 1))
-
-    # Mission control pane (optional)
-    if [ "$mission_enabled" = true ]; then
-        tmux send-keys -t "$TMUX_SESSION:0.$pane_idx" "cd '$SCRIPT_DIR' && node dist/mission-control.js --port '$mission_port'" C-m
-        tmux select-pane -t "$TMUX_SESSION:0.$pane_idx" -T "Mission"
-        pane_idx=$((pane_idx + 1))
-    fi
 
     # Logs pane
     tmux send-keys -t "$TMUX_SESSION:0.$pane_idx" "cd '$SCRIPT_DIR' && $log_tail_cmd" C-m
@@ -260,9 +243,6 @@ start_daemon() {
     echo "  Status:  tinyclaw status"
     echo "  Logs:    tinyclaw logs [$channel_names|queue]"
     echo "  Attach:  tmux attach -t $TMUX_SESSION"
-    if [ "$mission_enabled" = true ]; then
-        echo "  Mission: http://127.0.0.1:${mission_port} (set TINYCLAW_MISSION_PORT to change)"
-    fi
     echo ""
 
     local ch_list
@@ -283,7 +263,6 @@ stop_daemon() {
         pkill -f "${CHANNEL_SCRIPT[$ch]}" || true
     done
     pkill -f "dist/queue-processor.js" || true
-    pkill -f "dist/mission-control.js" || true
     pkill -f "heartbeat-cron.sh" || true
 
     echo -e "${GREEN}✓ TinyClaw stopped${NC}"
@@ -360,13 +339,6 @@ status_daemon() {
         echo -e "Heartbeat:       ${GREEN}Running${NC}"
     else
         echo -e "Heartbeat:       ${RED}Not Running${NC}"
-    fi
-
-    local mission_port="${TINYCLAW_MISSION_PORT:-4317}"
-    if pgrep -f "dist/mission-control.js" > /dev/null; then
-        echo -e "Mission UI:      ${GREEN}Running${NC} (http://127.0.0.1:${mission_port})"
-    else
-        echo -e "Mission UI:      ${RED}Not Running${NC}"
     fi
 
     # Recent activity per channel (only show if log file exists)
