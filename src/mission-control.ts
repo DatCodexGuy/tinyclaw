@@ -54,7 +54,7 @@ function readRecentEvents(limit: number): EventRecord[] {
             // Skip malformed events
         }
     }
-    return events.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+    return events.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 }
 
 function readRecentConversations(limit: number): Array<Record<string, unknown>> {
@@ -276,6 +276,20 @@ function indexHtml(): string {
     }
     .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
     .v { font-size: 22px; font-weight: 700; margin-top: 6px; color: #1d2b42; }
+    .metric-spark {
+      margin-top: 8px;
+      height: 6px;
+      border-radius: 999px;
+      background: #edf1f7;
+      overflow: hidden;
+    }
+    .metric-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #8ab2ff, var(--brand));
+      transition: width .25s ease;
+    }
     .board-wrap {
       border: 1px solid var(--line);
       border-radius: 10px;
@@ -344,6 +358,21 @@ function indexHtml(): string {
       line-height: 1.5;
     }
     .list li { margin: 6px 0; }
+    .trend-row {
+      margin-top: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      background: #fafbfd;
+    }
+    .trend-title { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+    .trend-bars { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; height: 42px; align-items: end; }
+    .trend-bar {
+      border-radius: 3px 3px 2px 2px;
+      background: linear-gradient(180deg, #90b3ff, #2f6df6);
+      min-height: 2px;
+    }
+    .trend-note { margin-top: 6px; font-size: 11px; color: var(--muted); }
     .layout {
       display: grid;
       grid-template-columns: 1.1fr 1fr 1fr;
@@ -517,12 +546,12 @@ function indexHtml(): string {
         </div>
       </section>
       <section class="cards">
-        <div class="card"><div class="k">Incoming</div><div id="incoming" class="v">0</div></div>
-        <div class="card"><div class="k">Processing</div><div id="processing" class="v">0</div></div>
-        <div class="card"><div class="k">Outgoing</div><div id="outgoing" class="v">0</div></div>
-        <div class="card"><div class="k">Agents</div><div id="agentCount" class="v">0</div></div>
-        <div class="card"><div class="k">Teams</div><div id="teamCount" class="v">0</div></div>
-        <div class="card"><div class="k">Total Events</div><div id="eventCount" class="v">0</div></div>
+        <div class="card"><div class="k">Incoming</div><div id="incoming" class="v">0</div><div class="metric-spark"><div id="incomingFill" class="metric-fill"></div></div></div>
+        <div class="card"><div class="k">Processing</div><div id="processing" class="v">0</div><div class="metric-spark"><div id="processingFill" class="metric-fill"></div></div></div>
+        <div class="card"><div class="k">Outgoing</div><div id="outgoing" class="v">0</div><div class="metric-spark"><div id="outgoingFill" class="metric-fill"></div></div></div>
+        <div class="card"><div class="k">Agents</div><div id="agentCount" class="v">0</div><div class="metric-spark"><div id="agentFill" class="metric-fill"></div></div></div>
+        <div class="card"><div class="k">Teams</div><div id="teamCount" class="v">0</div><div class="metric-spark"><div id="teamFill" class="metric-fill"></div></div></div>
+        <div class="card"><div class="k">Total Events</div><div id="eventCount" class="v">0</div><div class="metric-spark"><div id="eventFill" class="metric-fill"></div></div></div>
       </section>
 
       <section class="board-wrap">
@@ -614,6 +643,11 @@ function indexHtml(): string {
             <div class="panel-h"><div class="panel-title">System Health</div><div class="tiny">Operational diagnostics</div></div>
             <div class="panel-body">
               <ul id="healthList" class="list"></ul>
+              <div class="trend-row">
+                <div class="trend-title">Throughput Trend (last 10 windows)</div>
+                <div id="throughputBars" class="trend-bars"></div>
+                <div id="throughputNote" class="trend-note">No data yet</div>
+              </div>
             </div>
           </div>
           <div class="panel">
@@ -633,6 +667,12 @@ function indexHtml(): string {
     const agentCountEl = document.getElementById('agentCount');
     const teamCountEl = document.getElementById('teamCount');
     const eventCountEl = document.getElementById('eventCount');
+    const incomingFillEl = document.getElementById('incomingFill');
+    const processingFillEl = document.getElementById('processingFill');
+    const outgoingFillEl = document.getElementById('outgoingFill');
+    const agentFillEl = document.getElementById('agentFill');
+    const teamFillEl = document.getElementById('teamFill');
+    const eventFillEl = document.getElementById('eventFill');
     const processorBadge = document.getElementById('processorBadge');
     const homePathEl = document.getElementById('homePath');
     const lastUpdateEl = document.getElementById('lastUpdate');
@@ -649,6 +689,8 @@ function indexHtml(): string {
     const inboxCountEl = document.getElementById('inboxCount');
     const progressCountEl = document.getElementById('progressCount');
     const doneCountEl = document.getElementById('doneCount');
+    const throughputBarsEl = document.getElementById('throughputBars');
+    const throughputNoteEl = document.getElementById('throughputNote');
     let events = [];
     let selectedEventId = null;
     let currentStatus = null;
@@ -810,7 +852,7 @@ function indexHtml(): string {
         if (!query) return true;
         const hay = (JSON.stringify(ev) || '').toLowerCase();
         return hay.includes(query);
-      }).slice(-300);
+      }).slice(0, 300);
       const rows = filtered.map((ev, idx) => {
         const syntheticId = String(ev.timestamp || 0) + ':' + String(idx);
         const cls = syntheticId === selectedEventId ? 'event selected' : 'event';
@@ -867,7 +909,8 @@ function indexHtml(): string {
         convListEl.innerHTML = '<div class="tiny muted">No saved conversations yet</div>';
         return;
       }
-      convListEl.innerHTML = rows.map((row) => {
+      const ordered = [...rows].sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0));
+      convListEl.innerHTML = ordered.map((row) => {
         const when = fmtTime(row.timestamp);
         const team = esc(row.teamId || 'unknown');
         const file = esc(row.file || '');
@@ -909,6 +952,23 @@ function indexHtml(): string {
         'Event stream coverage: ' + recent.length + ' recent events loaded.',
       ];
       healthListEl.innerHTML = healthItems.map((item) => '<li>' + esc(item) + '</li>').join('');
+
+      const minuteBuckets = new Array(10).fill(0);
+      const now = Date.now();
+      for (const ev of recent) {
+        const ts = Number(ev.timestamp || 0);
+        if (!ts) continue;
+        const ageMin = Math.floor((now - ts) / 60000);
+        if (ageMin >= 0 && ageMin < 10) {
+          minuteBuckets[9 - ageMin] += 1;
+        }
+      }
+      const maxBucket = Math.max(1, ...minuteBuckets);
+      throughputBarsEl.innerHTML = minuteBuckets.map((count) => {
+        const h = Math.max(6, Math.round((count / maxBucket) * 100));
+        return '<div class="trend-bar" style="height:' + h + '%"></div>';
+      }).join('');
+      throughputNoteEl.textContent = 'Peak window: ' + maxBucket + ' events · Latest window: ' + minuteBuckets[9] + ' events';
     }
     function applyStatus(status) {
       currentStatus = status;
@@ -922,6 +982,22 @@ function indexHtml(): string {
       const label = status.processorAlive ? 'Processor Online' : 'Processor Offline';
       processorBadge.querySelector('span:last-child').textContent = label;
       processorBadge.className = 'badge ' + (status.processorAlive ? 'ok' : 'bad');
+
+      const incoming = Number(status.queue.incoming || 0);
+      const processing = Number(status.queue.processing || 0);
+      const outgoing = Number(status.queue.outgoing || 0);
+      const agents = Number((status.agents || []).length || 0);
+      const teams = Number((status.teams || []).length || 0);
+      const events = Number(eventCountEl.textContent || 0);
+      const queueMax = Math.max(1, incoming, processing, outgoing);
+      const orgMax = Math.max(1, agents, teams, 12);
+      const eventMax = Math.max(1, events, 200);
+      incomingFillEl.style.width = Math.round((incoming / queueMax) * 100) + '%';
+      processingFillEl.style.width = Math.round((processing / queueMax) * 100) + '%';
+      outgoingFillEl.style.width = Math.round((outgoing / queueMax) * 100) + '%';
+      agentFillEl.style.width = Math.round((agents / orgMax) * 100) + '%';
+      teamFillEl.style.width = Math.round((teams / orgMax) * 100) + '%';
+      eventFillEl.style.width = Math.round((events / eventMax) * 100) + '%';
       renderDerivedInsights();
     }
 
@@ -937,7 +1013,7 @@ function indexHtml(): string {
       const conv = await convRes.json();
       const queue = await queueRes.json();
       applyStatus(status);
-      events = ev.events || [];
+      events = [...(ev.events || [])].sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0));
       renderEvents();
       renderConversations(conv.conversations || []);
       renderQueue(queue.queue || {});
@@ -950,8 +1026,8 @@ function indexHtml(): string {
     });
     es.addEventListener('event', (e) => {
       const payload = JSON.parse(e.data);
-      events.push(payload);
-      if (events.length > 2000) events = events.slice(-1000);
+      events.unshift(payload);
+      if (events.length > 2000) events = events.slice(0, 1000);
       renderEvents();
     });
 
