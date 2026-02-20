@@ -163,6 +163,11 @@ Commands work with `tinyclaw` (if CLI installed) or `./tinyclaw.sh` (direct scri
 | `team visualize [id]` | Live TUI dashboard for team chains | `tinyclaw team visualize dev` |
 | `team mission [port]` | Web dashboard + queue/events API | `tinyclaw team mission 4317` |
 
+Mission Control also auto-starts with `tinyclaw start` by default.
+
+- Disable auto-start: `export TINYCLAW_MISSION_AUTO=0`
+- Change default port: `export TINYCLAW_MISSION_PORT=4317`
+
 ### Configuration Commands
 
 | Command                           | Description                  | Example                                          |
