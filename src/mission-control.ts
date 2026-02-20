@@ -78,6 +78,41 @@ function readRecentConversations(limit: number): Array<Record<string, unknown>> 
     return rows.sort((a, b) => Number(b.timestamp) - Number(a.timestamp)).slice(0, limit);
 }
 
+function readQueueSamples(limit: number): Record<string, unknown> {
+    const readDir = (dir: string): Array<Record<string, unknown>> => {
+        if (!fs.existsSync(dir)) return [];
+        return fs
+            .readdirSync(dir)
+            .filter((f) => f.endsWith('.json'))
+            .map((name) => {
+                const full = path.join(dir, name);
+                const stat = fs.statSync(full);
+                let parsed: Record<string, unknown> = {};
+                try {
+                    parsed = JSON.parse(fs.readFileSync(full, 'utf8')) as Record<string, unknown>;
+                } catch {
+                    parsed = {};
+                }
+                return {
+                    file: name,
+                    mtime: stat.mtimeMs,
+                    channel: parsed.channel || null,
+                    sender: parsed.sender || null,
+                    messageId: parsed.messageId || null,
+                    preview: typeof parsed.message === 'string' ? parsed.message.slice(0, 120) : null,
+                };
+            })
+            .sort((a, b) => Number(b.mtime) - Number(a.mtime))
+            .slice(0, limit);
+    };
+
+    return {
+        incoming: readDir(QUEUE_INCOMING),
+        processing: readDir(QUEUE_PROCESSING),
+        outgoing: readDir(QUEUE_OUTGOING),
+    };
+}
+
 function statusPayload(): Record<string, unknown> {
     const settings = getSettings();
     return {
@@ -114,85 +149,320 @@ function indexHtml(): string {
   <title>TinyClaw Mission Control</title>
   <style>
     :root {
-      --bg: #0b1220;
-      --panel: #111a2b;
-      --muted: #8fa2c0;
-      --text: #e6edf8;
-      --line: #22314c;
-      --ok: #22c55e;
-      --warn: #f59e0b;
-      --bad: #ef4444;
-      --blue: #4f8cff;
+      --bg-0: #060a14;
+      --bg-1: #0e1627;
+      --bg-2: #121d31;
+      --panel: #101a2d;
+      --panel-2: #0f1727;
+      --line: #24324a;
+      --text: #e8eef8;
+      --muted: #96a9c7;
+      --ok: #2dd489;
+      --warn: #ffbd4a;
+      --bad: #ff6b7a;
+      --accent: #6aa8ff;
+      --accent-2: #79f0ff;
     }
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; background: var(--bg); color: var(--text); }
-    .app { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
-    .sidebar { border-right: 1px solid var(--line); background: #0f1728; padding: 20px; position: sticky; top: 0; height: 100vh; }
-    .title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
-    .sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
-    .badge { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 12px; }
-    .ok { background: rgba(34,197,94,.18); color: #90f6b3; }
-    .bad { background: rgba(239,68,68,.18); color: #ffaaaa; }
-    .main { padding: 24px; }
-    .cards { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 12px; margin-bottom: 18px; }
-    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
-    .k { color: var(--muted); font-size: 12px; }
-    .v { font-size: 22px; font-weight: 700; }
-    .section { margin-top: 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-    .section h3 { margin: 0; padding: 12px 14px; border-bottom: 1px solid var(--line); font-size: 14px; }
-    .table { max-height: 65vh; overflow: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    td, th { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
-    th { position: sticky; top: 0; background: #12203a; z-index: 1; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; word-break: break-word; }
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: "Segoe UI", "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background:
+        radial-gradient(1000px 600px at -10% -20%, #1d355f 0%, transparent 50%),
+        radial-gradient(900px 500px at 120% -10%, #223e63 0%, transparent 45%),
+        linear-gradient(160deg, var(--bg-0), var(--bg-1) 42%, #0a1220);
+    }
+    .app {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 100vh;
+      gap: 0;
+    }
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 22px 16px;
+      border-right: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(12,20,35,.92), rgba(8,13,24,.9));
+      backdrop-filter: blur(8px);
+    }
+    .logo { font-weight: 700; font-size: 19px; letter-spacing: .2px; }
+    .sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
+    .nav { margin-top: 18px; display: grid; gap: 8px; }
+    .nav-item {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: rgba(11,18,33,.7);
+      color: var(--text);
+      font-size: 13px;
+    }
+    .nav-item strong { color: #fff; display: block; margin-bottom: 3px; font-size: 12px; }
+    .badge {
+      margin-top: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .ok .dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+    .bad .dot { background: var(--bad); box-shadow: 0 0 8px var(--bad); }
+    .main {
+      padding: 16px;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 12px;
+      min-width: 0;
+    }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 6;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(11,18,31,.86);
+      backdrop-filter: blur(8px);
+    }
+    .heading { font-size: 15px; font-weight: 650; }
     .muted { color: var(--muted); }
-    @media (max-width: 980px) {
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      word-break: break-word;
+    }
+    .chips { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .chip {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel-2);
+      padding: 5px 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(110px, 1fr));
+      gap: 10px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      background: linear-gradient(180deg, rgba(16,26,45,.96), rgba(12,20,34,.96));
+      min-height: 72px;
+    }
+    .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; }
+    .v { font-size: 23px; font-weight: 720; margin-top: 4px; }
+    .layout {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 12px;
+      min-height: 0;
+    }
+    .col { display: grid; gap: 12px; min-height: 0; }
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(15,23,39,.92);
+      min-height: 0;
+      overflow: hidden;
+    }
+    .panel-h {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(15,26,42,.95);
+    }
+    .panel-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; }
+    .panel-body { max-height: 33vh; overflow: auto; padding: 8px; }
+    .event {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px;
+      margin-bottom: 8px;
+      background: rgba(11,18,30,.75);
+      cursor: pointer;
+    }
+    .event:hover { border-color: #3a5478; }
+    .event.selected { border-color: var(--accent); box-shadow: inset 0 0 0 1px rgba(106,168,255,.4); }
+    .event-top { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+    .type {
+      border: 1px solid #324a70;
+      background: rgba(47,88,141,.2);
+      color: #b9d7ff;
+      border-radius: 999px;
+      padding: 1px 8px;
+      font-size: 11px;
+    }
+    .flow { color: #b7c8e6; font-size: 12px; }
+    .detail { font-size: 12px; color: var(--muted); line-height: 1.35; }
+    .tiny { font-size: 11px; color: var(--muted); }
+    .q-item, .conv-item {
+      border-bottom: 1px solid rgba(36,50,74,.7);
+      padding: 7px 2px;
+    }
+    .q-item:last-child, .conv-item:last-child { border-bottom: 0; }
+    .label {
+      display: inline-block;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 1px 6px;
+      font-size: 11px;
+      margin-right: 6px;
+      color: #bed1f2;
+      background: rgba(31,46,72,.4);
+    }
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      color: #cee1ff;
+      font-size: 12px;
+      line-height: 1.35;
+      background: rgba(8,13,23,.9);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+    }
+    input, select {
+      background: #091324;
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-size: 12px;
+      outline: none;
+    }
+    .filters { display: flex; gap: 8px; align-items: center; }
+    .grid-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 1200px) {
+      .cards { grid-template-columns: repeat(3, minmax(110px, 1fr)); }
+      .layout { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 860px) {
       .app { grid-template-columns: 1fr; }
-      .sidebar { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
-      .cards { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+      .sidebar {
+        position: static;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .cards { grid-template-columns: repeat(2, minmax(110px, 1fr)); }
     }
   </style>
 </head>
 <body>
   <div class="app">
     <aside class="sidebar">
-      <div class="title">Mission Control</div>
-      <div class="sub">Queue + Traceability</div>
-      <div id="processorBadge" class="badge bad">processor: down</div>
-      <div class="sub" style="margin-top:14px">Live stream via SSE</div>
+      <div class="logo">TinyClaw Mission</div>
+      <div class="sub">Live orchestration control view</div>
+      <div id="processorBadge" class="badge bad"><span class="dot"></span><span>Processor Offline</span></div>
+      <div class="nav">
+        <div class="nav-item"><strong>Overview</strong>Queue depth, health, agent/team count</div>
+        <div class="nav-item"><strong>Trace Feed</strong>Realtime message routing and handoffs</div>
+        <div class="nav-item"><strong>Inspector</strong>Click any event for raw JSON details</div>
+        <div class="nav-item"><strong>Conversations</strong>Recent saved team chat artifacts</div>
+      </div>
     </aside>
     <main class="main">
+      <section class="topbar">
+        <div>
+          <div class="heading">Mission Control Dashboard</div>
+          <div class="tiny">SSE live stream enabled</div>
+        </div>
+        <div class="chips">
+          <span class="chip">Home: <span id="homePath" class="mono"></span></span>
+          <span class="chip">Updated: <span id="lastUpdate" class="mono">-</span></span>
+        </div>
+      </section>
       <section class="cards">
         <div class="card"><div class="k">Incoming</div><div id="incoming" class="v">0</div></div>
         <div class="card"><div class="k">Processing</div><div id="processing" class="v">0</div></div>
         <div class="card"><div class="k">Outgoing</div><div id="outgoing" class="v">0</div></div>
+        <div class="card"><div class="k">Agents</div><div id="agentCount" class="v">0</div></div>
+        <div class="card"><div class="k">Teams</div><div id="teamCount" class="v">0</div></div>
         <div class="card"><div class="k">Total Events</div><div id="eventCount" class="v">0</div></div>
       </section>
-      <section class="section">
-        <h3>Recent Team/Event Trace</h3>
-        <div class="table">
-          <table>
-            <thead>
-              <tr><th>Time</th><th>Type</th><th>Flow</th><th>Details</th></tr>
-            </thead>
-            <tbody id="eventsBody"></tbody>
-          </table>
+
+      <section class="layout">
+        <div class="col">
+          <div class="panel">
+            <div class="panel-h">
+              <div class="panel-title">Realtime Trace Feed</div>
+              <div class="filters">
+                <select id="typeFilter">
+                  <option value="all">all events</option>
+                  <option value="chain_handoff">handoffs</option>
+                  <option value="chain_step_start">step start</option>
+                  <option value="chain_step_done">step done</option>
+                  <option value="response_ready">response ready</option>
+                </select>
+                <input id="searchBox" placeholder="search flow/details" />
+              </div>
+            </div>
+            <div id="eventsList" class="panel-body"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><div class="panel-title">Queue Snapshot</div><div class="tiny">Newest first</div></div>
+            <div class="panel-body grid-two">
+              <div><div class="tiny" style="margin-bottom:6px">Incoming</div><div id="qIncoming"></div></div>
+              <div><div class="tiny" style="margin-bottom:6px">Processing</div><div id="qProcessing"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="panel">
+            <div class="panel-h"><div class="panel-title">Event Inspector</div><div class="tiny">Selected event JSON</div></div>
+            <div class="panel-body"><pre id="eventInspector">{}</pre></div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><div class="panel-title">Recent Conversations</div><div class="tiny">Saved markdown transcripts</div></div>
+            <div id="convList" class="panel-body"></div>
+          </div>
         </div>
       </section>
     </main>
   </div>
   <script>
-    const eventsBody = document.getElementById('eventsBody');
+    const eventsList = document.getElementById('eventsList');
+    const eventInspector = document.getElementById('eventInspector');
     const incomingEl = document.getElementById('incoming');
     const processingEl = document.getElementById('processing');
     const outgoingEl = document.getElementById('outgoing');
+    const agentCountEl = document.getElementById('agentCount');
+    const teamCountEl = document.getElementById('teamCount');
     const eventCountEl = document.getElementById('eventCount');
     const processorBadge = document.getElementById('processorBadge');
+    const homePathEl = document.getElementById('homePath');
+    const lastUpdateEl = document.getElementById('lastUpdate');
+    const typeFilterEl = document.getElementById('typeFilter');
+    const searchBoxEl = document.getElementById('searchBox');
+    const qIncomingEl = document.getElementById('qIncoming');
+    const qProcessingEl = document.getElementById('qProcessing');
+    const convListEl = document.getElementById('convList');
     let events = [];
+    let selectedEventId = null;
 
     function fmtTime(ts) {
       if (!ts) return '-';
-      return new Date(ts).toLocaleTimeString();
+      const d = new Date(ts);
+      return d.toLocaleTimeString();
     }
     function flowOf(ev) {
       if (ev.fromAgent || ev.toAgent) return '@' + (ev.fromAgent || '?') + ' → @' + (ev.toAgent || ev.agentId || '?');
@@ -203,35 +473,94 @@ function indexHtml(): string {
       return ev.message || ev.responseText || ev.teamName || ev.channel || '';
     }
     function renderEvents() {
-      const rows = events.slice(-200).map((ev) => {
-        return '<tr>'
-          + '<td class="mono">' + fmtTime(ev.timestamp) + '</td>'
-          + '<td class="mono">' + (ev.type || '-') + '</td>'
-          + '<td class="mono">' + flowOf(ev) + '</td>'
-          + '<td class="mono muted">' + String(detailOf(ev)).slice(0, 180) + '</td>'
-          + '</tr>';
+      const typeFilter = typeFilterEl.value;
+      const query = (searchBoxEl.value || '').toLowerCase().trim();
+      const filtered = events.filter((ev) => {
+        if (typeFilter !== 'all' && ev.type !== typeFilter) return false;
+        if (!query) return true;
+        const hay = (JSON.stringify(ev) || '').toLowerCase();
+        return hay.includes(query);
+      }).slice(-300);
+      const rows = filtered.map((ev, idx) => {
+        const syntheticId = String(ev.timestamp || 0) + ':' + String(idx);
+        const cls = syntheticId === selectedEventId ? 'event selected' : 'event';
+        return '<div class="' + cls + '" data-eid="' + syntheticId + '">'
+          + '<div class="event-top"><span class="type">' + (ev.type || '-') + '</span><span class="tiny mono">' + fmtTime(ev.timestamp) + '</span></div>'
+          + '<div class="flow mono">' + flowOf(ev) + '</div>'
+          + '<div class="detail">' + String(detailOf(ev)).slice(0, 220) + '</div>'
+          + '</div>';
       }).join('');
-      eventsBody.innerHTML = rows || '<tr><td colspan="4" class="muted">No events yet</td></tr>';
+      eventsList.innerHTML = rows || '<div class="tiny muted">No events yet</div>';
       eventCountEl.textContent = String(events.length);
+
+      const nodes = eventsList.querySelectorAll('.event');
+      nodes.forEach((node) => {
+        node.addEventListener('click', () => {
+          selectedEventId = node.getAttribute('data-eid');
+          const index = Array.from(nodes).indexOf(node);
+          const filteredIndexBase = Math.max(0, filtered.length - nodes.length);
+          const ev = filtered[filteredIndexBase + index];
+          if (ev) {
+            eventInspector.textContent = JSON.stringify(ev, null, 2);
+          }
+          renderEvents();
+        });
+      });
+    }
+    function renderQueue(data) {
+      const renderItems = (items) => {
+        if (!items || items.length === 0) return '<div class="tiny muted">empty</div>';
+        return items.map((item) => {
+          return '<div class="q-item">'
+            + '<div><span class="label">' + (item.channel || 'n/a') + '</span><span class="mono tiny">' + (item.file || '-') + '</span></div>'
+            + '<div class="tiny muted">' + (item.preview || '') + '</div>'
+            + '</div>';
+        }).join('');
+      };
+      qIncomingEl.innerHTML = renderItems(data.incoming || []);
+      qProcessingEl.innerHTML = renderItems(data.processing || []);
+    }
+    function renderConversations(rows) {
+      if (!rows || rows.length === 0) {
+        convListEl.innerHTML = '<div class="tiny muted">No saved conversations yet</div>';
+        return;
+      }
+      convListEl.innerHTML = rows.map((row) => {
+        return '<div class="conv-item">'
+          + '<div><span class="label">' + (row.teamId || 'team') + '</span><span class="mono tiny">' + (row.file || '') + '</span></div>'
+          + '<div class="tiny muted mono">' + (row.path || '') + '</div>'
+          + '</div>';
+      }).join('');
     }
     function applyStatus(status) {
       incomingEl.textContent = String(status.queue.incoming || 0);
       processingEl.textContent = String(status.queue.processing || 0);
       outgoingEl.textContent = String(status.queue.outgoing || 0);
-      processorBadge.textContent = status.processorAlive ? 'processor: up' : 'processor: down';
+      agentCountEl.textContent = String((status.agents || []).length);
+      teamCountEl.textContent = String((status.teams || []).length);
+      homePathEl.textContent = status.tinyclawHome || '-';
+      lastUpdateEl.textContent = fmtTime(status.timestamp);
+      const label = status.processorAlive ? 'Processor Online' : 'Processor Offline';
+      processorBadge.querySelector('span:last-child').textContent = label;
       processorBadge.className = 'badge ' + (status.processorAlive ? 'ok' : 'bad');
     }
 
     async function bootstrap() {
-      const [statusRes, eventsRes] = await Promise.all([
+      const [statusRes, eventsRes, convRes, queueRes] = await Promise.all([
         fetch('/api/status'),
-        fetch('/api/events?limit=200')
+        fetch('/api/events?limit=250'),
+        fetch('/api/conversations?limit=30'),
+        fetch('/api/queue?limit=20')
       ]);
       const status = await statusRes.json();
       const ev = await eventsRes.json();
+      const conv = await convRes.json();
+      const queue = await queueRes.json();
       applyStatus(status);
       events = ev.events || [];
       renderEvents();
+      renderConversations(conv.conversations || []);
+      renderQueue(queue.queue || {});
     }
 
     const es = new EventSource('/api/stream');
@@ -245,6 +574,22 @@ function indexHtml(): string {
       if (events.length > 2000) events = events.slice(-1000);
       renderEvents();
     });
+
+    setInterval(async () => {
+      try {
+        const [convRes, queueRes] = await Promise.all([
+          fetch('/api/conversations?limit=30'),
+          fetch('/api/queue?limit=20')
+        ]);
+        const conv = await convRes.json();
+        const queue = await queueRes.json();
+        renderConversations(conv.conversations || []);
+        renderQueue(queue.queue || {});
+      } catch (_e) {}
+    }, 4000);
+
+    typeFilterEl.addEventListener('change', renderEvents);
+    searchBoxEl.addEventListener('input', renderEvents);
 
     bootstrap().catch((err) => {
       console.error(err);
@@ -276,6 +621,10 @@ function startServer(port: number): void {
         if (reqUrl.pathname === '/api/conversations') {
             const limit = Math.max(1, Math.min(500, Number(reqUrl.searchParams.get('limit') || '50')));
             return writeJson(res, 200, { conversations: readRecentConversations(limit) });
+        }
+        if (reqUrl.pathname === '/api/queue') {
+            const limit = Math.max(1, Math.min(50, Number(reqUrl.searchParams.get('limit') || '20')));
+            return writeJson(res, 200, { queue: readQueueSamples(limit) });
         }
         if (reqUrl.pathname === '/api/stream') {
             res.writeHead(200, {
@@ -327,4 +676,3 @@ function parsePort(): number {
 }
 
 startServer(parsePort());
-
